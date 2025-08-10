@@ -12,17 +12,18 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        golang: ['stable', 'oldstable', '1.23']
+        golang: ["stable", "oldstable", ""]
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ matrix.golang }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.golang }}
+          go-version-file: "go.mod"
 
-    - name: Build
-      run: go build -v ./...
+      - name: Build
+        run: go build -v ./...
 
-    - name: Test
-      run: go test -v ./...
+      - name: Test
+        run: go test -v ./...
