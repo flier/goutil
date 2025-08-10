@@ -7,7 +7,6 @@ package res
 
 import (
 	"fmt"
-	"iter"
 )
 
 // Result is a type that represents either success (Ok) or failure (Err).
@@ -21,39 +20,6 @@ func Ok[T any](value T) Result[T] { return Result[T]{&value, nil} }
 
 // Contains the error value.
 func Err[T any](err error) Result[T] { return Result[T]{nil, err} }
-
-// Collect iterates over a sequence of Result[T] values, collecting all successful values into a slice.
-//
-// If any Result in the sequence is an error, Collect returns nil and the encountered error immediately.
-// Otherwise, it returns the slice of unwrapped values and a nil error.
-func Collect[T any](seq iter.Seq[Result[T]]) (values []T, err error) {
-	for res := range seq {
-		if res.IsErr() {
-			return nil, res.Err
-		}
-
-		values = append(values, res.Unwrap())
-	}
-
-	return
-}
-
-// Collect2 iterates over a sequence of values and errors provided by seq.
-//
-// It collects all values into a slice until an error is encountered.
-// If an error occurs during iteration, it returns nil and the error.
-// Otherwise, it returns the collected values and a nil error.
-func Collect2[T any](seq iter.Seq2[T, error]) (values []T, err error) {
-	for value, err := range seq {
-		if err != nil {
-			return nil, err
-		}
-
-		values = append(values, value)
-	}
-
-	return
-}
 
 func (r Result[T]) String() string {
 	if r.IsOk() {

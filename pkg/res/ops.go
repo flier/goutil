@@ -1,7 +1,5 @@
 package res
 
-import "iter"
-
 // Maps a Result[T] to Result[U] by applying a function to a contained Ok value, leaving an Err value untouched.
 func Map[T any, U any](r Result[T], f func(T) U) Result[U] {
 	if r.IsErr() {
@@ -107,17 +105,6 @@ func (r Result[T]) OrElse(op func(error) Result[T]) Result[T] {
 	}
 
 	return op(r.Err)
-}
-
-// Returns an iterator over the possibly contained value.
-//
-// The iterator yields one value if the result is Ok, otherwise none.
-func (o Result[T]) Iter() iter.Seq[T] {
-	return func(yield func(T) bool) {
-		if o.IsOk() {
-			yield(o.unwrap())
-		}
-	}
 }
 
 // Converts from Result[Result[T]] to Result[T].

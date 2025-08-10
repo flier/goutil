@@ -1,8 +1,6 @@
 package opt
 
 import (
-	"iter"
-
 	"github.com/flier/goutil/pkg/res"
 	"github.com/flier/goutil/pkg/tuple"
 )
@@ -153,15 +151,6 @@ func (o Option[T]) Xor(optb Option[T]) Option[T] {
 	}
 
 	return None[T]()
-}
-
-// Returns an iterator over the possibly contained value.
-func (o Option[T]) Iter() iter.Seq[T] {
-	return func(yield func(T) bool) {
-		if o.IsSome() {
-			yield(o.unwrap())
-		}
-	}
 }
 
 // Converts from Option[Option[T]] to Option[T].

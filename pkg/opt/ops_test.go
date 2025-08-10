@@ -3,7 +3,6 @@ package opt_test
 import (
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
 	"testing"
 
@@ -195,11 +194,6 @@ func TestOps(t *testing.T) {
 			So(some.Xor(none), ShouldEqual, some)
 			So(none.Xor(some), ShouldEqual, some)
 			So(none.Xor(none), ShouldEqual, none)
-		})
-
-		Convey("Then iterate the option", func() {
-			So(slices.Collect(some.Iter()), ShouldResemble, []int{123})
-			So(slices.Collect(none.Iter()), ShouldBeEmpty)
 		})
 
 		Convey("Then flatten the option", func() {

@@ -3,7 +3,6 @@ package res_test
 import (
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
 	"testing"
 
@@ -139,11 +138,6 @@ func TestOps(t *testing.T) {
 		Convey("Then call a function if the result is err", func() {
 			So(ok.OrElse(func(error) Result[int] { return ok2 }), ShouldEqual, ok)
 			So(err.OrElse(func(error) Result[int] { return ok2 }), ShouldEqual, ok2)
-		})
-
-		Convey("Then iterate the result", func() {
-			So(slices.Collect(ok.Iter()), ShouldResemble, []int{123})
-			So(slices.Collect(err.Iter()), ShouldBeEmpty)
 		})
 
 		Convey("Then flatten the result", func() {
