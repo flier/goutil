@@ -7,7 +7,7 @@ import "fmt"
 
 // The Option type.
 type Option[T any] struct {
-	Value *T
+	val *T
 }
 
 // Some value of type T.
@@ -28,13 +28,13 @@ func (o Option[T]) String() string {
 }
 
 // Returns true if the option is a Some value.
-func (o Option[T]) IsSome() bool { return o.Value != nil }
+func (o Option[T]) IsSome() bool { return o.val != nil }
 
 // Returns true if the option is a Some and the value inside of it matches a predicate.
 func (o Option[T]) IsSomeAnd(f func(T) bool) bool { return o.IsSome() && f(o.unwrap()) }
 
 // Returns true if the option is a None value.
-func (o Option[T]) IsNone() bool { return o.Value == nil }
+func (o Option[T]) IsNone() bool { return o.val == nil }
 
 // Returns true if the option is a None or the value inside of it matches a predicate.
 func (o Option[T]) IsNoneOr(f func(T) bool) bool { return o.IsNone() || f(o.unwrap()) }
@@ -55,7 +55,7 @@ func (o Option[T]) Unwrap() T {
 
 // Returns the contained Some value or a provided default.
 func (o Option[T]) UnwrapOr(def T) T {
-	if o.Value == nil {
+	if o.val == nil {
 		return def
 	}
 
@@ -64,7 +64,7 @@ func (o Option[T]) UnwrapOr(def T) T {
 
 // Returns the contained Some value or computes it from a closure.
 func (o Option[T]) UnwrapOrElse(f func() T) T {
-	if o.Value == nil {
+	if o.val == nil {
 		return f()
 	}
 
@@ -73,11 +73,11 @@ func (o Option[T]) UnwrapOrElse(f func() T) T {
 
 // Returns the contained Some value or a default.
 func (o Option[T]) UnwrapOrDefault() (v T) {
-	if o.Value != nil {
+	if o.val != nil {
 		v = o.unwrap()
 	}
 
 	return
 }
 
-func (o Option[T]) unwrap() T { return *o.Value }
+func (o Option[T]) unwrap() T { return *o.val }

@@ -26,8 +26,8 @@ import "fmt"
 
 // Either with variants Left and Right is a general purpose sum type with two cases.
 type Either[L, R any] struct {
-	Left  *L // A value of type L.
-	Right *R // A value of type R.
+	left  *L // A value of type L.
+	right *R // A value of type R.
 }
 
 func Empty[L, R any]() Either[L, R] {
@@ -36,51 +36,51 @@ func Empty[L, R any]() Either[L, R] {
 
 // Left creates a new Either value with the given left value.
 func Left[L, R any](left L) Either[L, R] {
-	return Either[L, R]{Left: &left}
+	return Either[L, R]{left: &left}
 }
 
 // Right creates a new Either value with the given right value.
 func Right[L, R any](right R) Either[L, R] {
-	return Either[L, R]{Right: &right}
+	return Either[L, R]{right: &right}
 }
 
 func (e Either[L, R]) String() string {
-	if e.Left != nil {
-		return fmt.Sprintf("Left(%v)", *e.Left)
+	if e.left != nil {
+		return fmt.Sprintf("Left(%v)", *e.left)
 	}
 
-	if e.Right != nil {
-		return fmt.Sprintf("Right(%v)", *e.Right)
+	if e.right != nil {
+		return fmt.Sprintf("Right(%v)", *e.right)
 	}
 
 	return "Empty"
 }
 
 func (e Either[L, R]) GoString() string {
-	if e.Left != nil {
-		return fmt.Sprintf("Either { Left: %v }", *e.Left)
+	if e.left != nil {
+		return fmt.Sprintf("Either { Left: %v }", *e.left)
 	}
 
-	if e.Right != nil {
-		return fmt.Sprintf("Either { Right: %v }", *e.Right)
+	if e.right != nil {
+		return fmt.Sprintf("Either { Right: %v }", *e.right)
 	}
 
 	return "Either {}"
 }
 
 // HasLeft returns true if the value is the Left variant.
-func (e Either[L, R]) HasLeft() bool { return e.Left != nil }
+func (e Either[L, R]) HasLeft() bool { return e.left != nil }
 
 // HasRight returns true if the value is the Right variant.
-func (e Either[L, R]) HasRight() bool { return e.Right != nil }
+func (e Either[L, R]) HasRight() bool { return e.right != nil }
 
 // Flip converts Either[L, R] to Either[R, L].
-func (e Either[L, R]) Flip() Either[R, L] { return Either[R, L]{e.Right, e.Left} }
+func (e Either[L, R]) Flip() Either[R, L] { return Either[R, L]{e.right, e.left} }
 
 // LeftOr returns left value or given value
 func (e Either[L, R]) LeftOr(other L) L {
-	if e.Left != nil {
-		return *e.Left
+	if e.left != nil {
+		return *e.left
 	}
 
 	return other
@@ -88,8 +88,8 @@ func (e Either[L, R]) LeftOr(other L) L {
 
 // LeftOrEmpty returns left or a empty value
 func (e Either[L, R]) LeftOrEmpty() (l L) {
-	if e.Left != nil {
-		l = *e.Left
+	if e.left != nil {
+		l = *e.left
 	}
 
 	return
@@ -97,8 +97,8 @@ func (e Either[L, R]) LeftOrEmpty() (l L) {
 
 // LeftOrElse returns left value or computes it from a function f
 func (e Either[L, R]) LeftOrElse(f func() L) L {
-	if e.Left != nil {
-		return *e.Left
+	if e.left != nil {
+		return *e.left
 	}
 
 	return f()
@@ -106,8 +106,8 @@ func (e Either[L, R]) LeftOrElse(f func() L) L {
 
 // RightOr returns right value or given value
 func (e Either[L, R]) RightOr(other R) R {
-	if e.Right != nil {
-		return *e.Right
+	if e.right != nil {
+		return *e.right
 	}
 
 	return other
@@ -115,8 +115,8 @@ func (e Either[L, R]) RightOr(other R) R {
 
 // RightOrEmpty returns right or a empty value
 func (e Either[L, R]) RightOrEmpty() (r R) {
-	if e.Right != nil {
-		r = *e.Right
+	if e.right != nil {
+		r = *e.right
 	}
 
 	return
@@ -124,8 +124,8 @@ func (e Either[L, R]) RightOrEmpty() (r R) {
 
 // RightOrElse returns right value or computes it from a function f
 func (e Either[L, R]) RightOrElse(f func() R) R {
-	if e.Right != nil {
-		return *e.Right
+	if e.right != nil {
+		return *e.right
 	}
 
 	return f()
@@ -133,76 +133,76 @@ func (e Either[L, R]) RightOrElse(f func() R) R {
 
 // UnwrapLeft returns the left value or panic
 func (e Either[L, R]) UnwrapLeft() L {
-	if e.Left == nil {
+	if e.left == nil {
 		unwrapFail("called Either.UnwrapLeft on a Right value: %v", e.RightOrEmpty())
 	}
 
-	return *e.Left
+	return *e.left
 }
 
 // UnwrapRight returns the right value or panic
 func (e Either[L, R]) UnwrapRight() R {
-	if e.Right == nil {
+	if e.right == nil {
 		unwrapFail("called Either.UnwrapRight on a Left value: %v", e.LeftOrEmpty())
 	}
 
-	return *e.Right
+	return *e.right
 }
 
 // ExpectLeft returns the left value or panic with message
 func (e Either[L, R]) ExpectLeft(msg string) L {
-	if e.Left == nil {
+	if e.left == nil {
 		unwrapFail("%s: %v", msg, e.RightOrEmpty())
 	}
 
-	return *e.Left
+	return *e.left
 }
 
 // ExpectRight returns the right value or panic with message
 func (e Either[L, R]) ExpectRight(msg string) R {
-	if e.Right == nil {
+	if e.right == nil {
 		unwrapFail("%s: %v", msg, e.LeftOrEmpty())
 	}
 
-	return *e.Right
+	return *e.right
 }
 
 func unwrapFail(format string, a ...any) { panic(fmt.Sprintf(format, a...)) }
 
 // MapLeft applies the function f on the value in the Left variant if it is present rewrapping the result in Left.
 func MapLeft[L, R, M any](e Either[L, R], f func(L) M) Either[M, R] {
-	if e.Left == nil {
-		return Either[M, R]{nil, e.Right}
+	if e.left == nil {
+		return Either[M, R]{nil, e.right}
 	}
 
-	m := f(*e.Left)
+	m := f(*e.left)
 
-	return Either[M, R]{&m, e.Right}
+	return Either[M, R]{&m, e.right}
 }
 
 // MapRight applies the function f on the value in the Right variant if it is present rewrapping the result in Right.
 func MapRight[L, R, M any](e Either[L, R], f func(R) M) Either[L, M] {
-	if e.Right == nil {
-		return Either[L, M]{Left: e.Left, Right: nil}
+	if e.right == nil {
+		return Either[L, M]{left: e.left, right: nil}
 	}
 
-	m := f(*e.Right)
+	m := f(*e.right)
 
-	return Either[L, M]{e.Left, &m}
+	return Either[L, M]{e.left, &m}
 }
 
 // MapEither applies the functions f and g to the Left and Right variants respectively.
 func MapEither[L, R, M, S any](e Either[L, R], f func(L) M, g func(R) S) Either[M, S] {
 	var m Either[M, S]
 
-	if e.Left != nil {
-		l := f(*e.Left)
-		m.Left = &l
+	if e.left != nil {
+		l := f(*e.left)
+		m.left = &l
 	}
 
-	if e.Right != nil {
-		r := g(*e.Right)
-		m.Right = &r
+	if e.right != nil {
+		r := g(*e.right)
+		m.right = &r
 	}
 
 	return m
@@ -210,13 +210,13 @@ func MapEither[L, R, M, S any](e Either[L, R], f func(L) M, g func(R) S) Either[
 
 // Reduce applies one of two functions depending on contents, unifying their result.
 func Reduce[L, R, T any](e Either[L, R], f func(L) T, g func(R) T) (t T) {
-	if e.Left != nil {
-		t = f(*e.Left)
+	if e.left != nil {
+		t = f(*e.left)
 
 	}
 
-	if e.Right != nil {
-		t = g(*e.Right)
+	if e.right != nil {
+		t = g(*e.right)
 	}
 
 	return
@@ -224,18 +224,18 @@ func Reduce[L, R, T any](e Either[L, R], f func(L) T, g func(R) T) (t T) {
 
 // LeftAndThen applies the function f on the value in the Left variant if it is present.
 func LeftAndThen[L, R, S any](e Either[L, R], f func(L) Either[S, R]) Either[S, R] {
-	if e.Left == nil {
-		return Either[S, R]{nil, e.Right}
+	if e.left == nil {
+		return Either[S, R]{nil, e.right}
 	}
 
-	return f(*e.Left)
+	return f(*e.left)
 }
 
 // RightAndThen applies the function f on the value in the Right variant if it is present.
 func RightAndThen[L, R, S any](e Either[L, R], f func(R) Either[L, S]) Either[L, S] {
-	if e.Right == nil {
-		return Either[L, S]{Left: e.Left, Right: nil}
+	if e.right == nil {
+		return Either[L, S]{left: e.left, right: nil}
 	}
 
-	return f(*e.Right)
+	return f(*e.right)
 }

@@ -26,7 +26,8 @@ func TestOption(t *testing.T) {
 			So(some.UnwrapOrElse(func() int { return 456 }), ShouldEqual, 123)
 			So(some.UnwrapOrDefault(), ShouldEqual, 123)
 
-			So(Wrap(some.Value), ShouldEqual, some)
+			n := 123
+			So(Wrap(&n), ShouldEqual, some)
 		})
 
 		none := None[int]()

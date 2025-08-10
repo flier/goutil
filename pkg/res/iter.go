@@ -11,7 +11,7 @@ import "iter"
 func Collect[T any](seq iter.Seq[Result[T]]) (values []T, err error) {
 	for res := range seq {
 		if res.IsErr() {
-			return nil, res.Err
+			return nil, res.err
 		}
 
 		values = append(values, res.Unwrap())

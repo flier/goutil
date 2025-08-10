@@ -11,8 +11,8 @@ import (
 
 // Result is a type that represents either success (Ok) or failure (Err).
 type Result[T any] struct {
-	Value *T
-	Err   error
+	val *T
+	err error
 }
 
 // Contains the success value.
@@ -35,26 +35,26 @@ func (r Result[T]) String() string {
 		return fmt.Sprintf("Ok(%v)", r.unwrap())
 	}
 
-	return fmt.Sprintf("Err(%v)", r.Err)
+	return fmt.Sprintf("Err(%v)", r.err)
 }
 
 // Returns true if the result is Ok.
-func (r Result[T]) IsOk() bool { return r.Value != nil }
+func (r Result[T]) IsOk() bool { return r.val != nil }
 
 // Returns true if the result is Ok and the value inside of it matches a predicate.
 func (r Result[T]) IsOkAnd(f func(T) bool) bool { return r.IsOk() && f(r.unwrap()) }
 
 // Returns true if the result is Err.
-func (r Result[T]) IsErr() bool { return r.Err != nil }
+func (r Result[T]) IsErr() bool { return r.err != nil }
 
 // Returns true if the result is Err and the value inside of it matches a predicate.
-func (r Result[T]) IsErrAnd(f func(error) bool) bool { return r.IsErr() && f(r.Err) }
+func (r Result[T]) IsErrAnd(f func(error) bool) bool { return r.IsErr() && f(r.err) }
 
 // Returns the contained Ok value, or panics if the value is an Err,
 // with a panic message including the passed message, and the content of the Err..
 func (r Result[T]) Expect(msg string) T {
 	if r.IsErr() {
-		unwrapFail("%s: %s", msg, r.Err)
+		unwrapFail("%s: %s", msg, r.err)
 	}
 
 	return r.unwrap()
@@ -67,7 +67,7 @@ func (r Result[T]) ExpectErr(msg string) error {
 		unwrapFail("%s: %v", msg, r.unwrap())
 	}
 
-	return r.Err
+	return r.err
 }
 
 // Returns the contained Ok value, or panics if the value is an Err.
@@ -107,6 +107,6 @@ func (r Result[T]) UnwrapErr() error {
 	return r.ExpectErr("called `Result.UnwrapErr()` on an `Ok` value")
 }
 
-func (r Result[T]) unwrap() T { return *r.Value }
+func (r Result[T]) unwrap() T { return *r.val }
 
 func unwrapFail(format string, a ...any) { panic(fmt.Sprintf(format, a...)) }
