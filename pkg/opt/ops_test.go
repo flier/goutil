@@ -10,6 +10,7 @@ import (
 
 	. "github.com/flier/goutil/pkg/opt"
 	"github.com/flier/goutil/pkg/res"
+	"github.com/flier/goutil/pkg/tuple"
 )
 
 func ExampleMap() {
@@ -98,6 +99,18 @@ func ExampleZipWith() {
 	// None
 }
 
+func ExampleUnzip() {
+	x := Some(tuple.New2("hello", 42))
+	y := None[tuple.Tuple2[string, int]]()
+
+	fmt.Println(Unzip(x))
+	fmt.Println(Unzip(y))
+
+	// Output:
+	// Some(hello) Some(42)
+	// None None
+}
+
 func TestOps(t *testing.T) {
 	Convey("Given some new option", t, func() {
 		some := Some(123)
@@ -109,8 +122,9 @@ func TestOps(t *testing.T) {
 		err := res.Err[int](io.EOF)
 
 		double := func(v int) int { return v * 2 }
+		mul := func(x, y int) int { return x * y }
 
-		Convey("Then map the value", func() {
+		Convey("When map the value", func() {
 			So(Map(some, strconv.Itoa), ShouldEqual, Some("123"))
 			So(Map(none, strconv.Itoa).IsNone(), ShouldBeTrue)
 
@@ -130,12 +144,12 @@ func TestOps(t *testing.T) {
 			So(none.MapOrElse(func() int { return 456 }, double), ShouldEqual, 456)
 		})
 
-		Convey("Then inspect the value", func() {
+		Convey("When inspect the value", func() {
 			So(some.Inspect(func(v int) { So(v, ShouldEqual, 123) }), ShouldEqual, some)
 			So(none.Inspect(func(v int) { t.FailNow() }), ShouldEqual, none)
 		})
 
-		Convey("Then convert Result[T] to Option[T]", func() {
+		Convey("When convert Result[T] to Option[T]", func() {
 			So(Ok(ok), ShouldEqual, some)
 			So(Err(ok).IsNone(), ShouldBeTrue)
 
@@ -143,7 +157,7 @@ func TestOps(t *testing.T) {
 			So(Err(err), ShouldEqual, Some(io.EOF))
 		})
 
-		Convey("Then convert Option[T] to Result[T]", func() {
+		Convey("When convert Option[T] to Result[T]", func() {
 			So(some.OkOr(io.EOF), ShouldEqual, ok)
 			So(none.OkOr(io.EOF), ShouldEqual, err)
 
@@ -151,7 +165,7 @@ func TestOps(t *testing.T) {
 			So(none.OkOrElse(func() error { return io.EOF }), ShouldEqual, err)
 		})
 
-		Convey("Then and two options", func() {
+		Convey("When and two options", func() {
 			So(And(some, someStr), ShouldEqual, someStr)
 			So(And(some, none), ShouldEqual, none)
 			So(And(none, some), ShouldEqual, none)
@@ -163,7 +177,7 @@ func TestOps(t *testing.T) {
 			So(none.And(none), ShouldEqual, none)
 		})
 
-		Convey("Then call a function on the option value", func() {
+		Convey("When call a function on the option value", func() {
 			So(AndThen(some, func(v int) Option[string] { return Some(strconv.Itoa(v)) }), ShouldEqual, Some("123"))
 			So(AndThen(none, func(v int) Option[string] { return Some(strconv.Itoa(v)) }).IsNone(), ShouldBeTrue)
 
@@ -171,35 +185,61 @@ func TestOps(t *testing.T) {
 			So(none.AndThen(func(v int) Option[int] { return some2 }), ShouldEqual, none)
 		})
 
-		Convey("Then filter the option", func() {
+		Convey("When filter the option", func() {
 			So(some.Filter(func(v int) bool { return v > 0 }), ShouldEqual, some)
 			So(some.Filter(func(v int) bool { return v < 0 }), ShouldEqual, none)
 			So(none.Filter(func(v int) bool { return v > 0 }), ShouldEqual, none)
 		})
 
-		Convey("Then or two options", func() {
+		Convey("When or two options", func() {
 			So(some.Or(some2), ShouldEqual, some)
 			So(some.Or(none), ShouldEqual, some)
 			So(none.Or(some), ShouldEqual, some)
 			So(none.Or(none), ShouldEqual, none)
 		})
 
-		Convey("Then call a function if the option is none", func() {
+		Convey("When call a function if the option is none", func() {
 			So(some.OrElse(func() Option[int] { return some2 }), ShouldEqual, some)
 			So(none.OrElse(func() Option[int] { return some2 }), ShouldEqual, some2)
 		})
 
-		Convey("Then xor two options", func() {
+		Convey("When xor two options", func() {
 			So(some.Xor(some2), ShouldEqual, none)
 			So(some.Xor(none), ShouldEqual, some)
 			So(none.Xor(some), ShouldEqual, some)
 			So(none.Xor(none), ShouldEqual, none)
 		})
 
-		Convey("Then flatten the option", func() {
+		Convey("When flatten the option", func() {
 			So(Flatten(Some(some)), ShouldEqual, some)
 			So(Flatten(Some(none)), ShouldEqual, none)
 			So(Flatten(None[Option[int]]()), ShouldEqual, none)
+		})
+
+		Convey("When zip two optoins", func() {
+			So(Zip(some, someStr), ShouldEqual, Some(tuple.New2(123, "foobar")))
+			So(Zip(some, none), ShouldEqual, None[tuple.Tuple2[int, int]]())
+			So(Zip(none, someStr), ShouldEqual, None[tuple.Tuple2[int, string]]())
+			So(Zip(none, none), ShouldEqual, None[tuple.Tuple2[int, int]]())
+		})
+
+		Convey("When zip two optoins with function", func() {
+			So(ZipWith(some, some2, mul), ShouldEqual, Some(123*456))
+			So(ZipWith(some, none, mul), ShouldEqual, none)
+			So(ZipWith(none, some2, mul), ShouldEqual, none)
+			So(ZipWith(none, none, mul), ShouldEqual, none)
+		})
+
+		Convey("When unzip to two optoins", func() {
+			x, y := Unzip(Some(tuple.New2(123, "foobar")))
+			So(x, ShouldEqual, some)
+			So(y, ShouldEqual, someStr)
+		})
+
+		Convey("When unzip none", func() {
+			x, y := Unzip(None[tuple.Tuple2[int, int]]())
+			So(x, ShouldEqual, none)
+			So(y, ShouldEqual, none)
 		})
 	})
 }

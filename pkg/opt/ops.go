@@ -183,3 +183,16 @@ func ZipWith[T, U, R any](x Option[T], y Option[U], f func(T, U) R) Option[R] {
 
 	return None[R]()
 }
+
+// Unzips an option containing a tuple of two options.
+//
+// If x is Some((a, b)) this method returns (Some(a), Some(b)). Otherwise, (None, None) is returned.
+func Unzip[T, U any](x Option[tuple.Tuple2[T, U]]) (Option[T], Option[U]) {
+	if x.IsSome() {
+		v0, v1 := x.Unwrap().Unpack()
+
+		return Some(v0), Some(v1)
+	}
+
+	return None[T](), None[U]()
+}
