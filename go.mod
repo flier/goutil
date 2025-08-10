@@ -1,6 +1,6 @@
 module github.com/flier/goutil
 
-go 1.23
+go 1.18
 
 require github.com/smartystreets/goconvey v1.8.1
 
