@@ -33,6 +33,8 @@ func TestResult(t *testing.T) {
 			So(ok.UnwrapOr(456), ShouldEqual, 123)
 			So(ok.UnwrapOrElse(func() int { return 456 }), ShouldEqual, 123)
 			So(ok.UnwrapOrDefault(), ShouldEqual, 123)
+
+			So(Wrap(123, nil), ShouldEqual, Ok(123))
 		})
 
 		err := Err[int](io.EOF)
@@ -53,6 +55,8 @@ func TestResult(t *testing.T) {
 			So(err.UnwrapOr(456), ShouldEqual, 456)
 			So(err.UnwrapOrElse(func() int { return 456 }), ShouldEqual, 456)
 			So(err.UnwrapOrDefault(), ShouldEqual, 0)
+
+			So(Wrap(0, io.EOF), ShouldResemble, err)
 		})
 	})
 }

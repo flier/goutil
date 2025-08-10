@@ -21,6 +21,15 @@ func Ok[T any](value T) Result[T] { return Result[T]{&value, nil} }
 // Contains the error value.
 func Err[T any](err error) Result[T] { return Result[T]{nil, err} }
 
+// Wrap a value and error
+func Wrap[T any](value T, err error) Result[T] {
+	if err != nil {
+		return Result[T]{nil, err}
+	}
+
+	return Result[T]{&value, nil}
+}
+
 func (r Result[T]) String() string {
 	if r.IsOk() {
 		return fmt.Sprintf("Ok(%v)", r.unwrap())

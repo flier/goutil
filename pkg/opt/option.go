@@ -11,14 +11,13 @@ type Option[T any] struct {
 }
 
 // Some value of type T.
-func Some[T any](value T) Option[T] {
-	return Option[T]{&value}
-}
+func Some[T any](value T) Option[T] { return Option[T]{&value} }
 
 // No value.
-func None[T any]() Option[T] {
-	return Option[T]{nil}
-}
+func None[T any]() Option[T] { return Option[T]{nil} }
+
+// Wrap a optional value of type T.
+func Wrap[T any](value *T) Option[T] { return Option[T]{value} }
 
 func (o Option[T]) String() string {
 	if o.IsSome() {

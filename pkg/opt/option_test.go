@@ -25,6 +25,8 @@ func TestOption(t *testing.T) {
 			So(some.UnwrapOr(456), ShouldEqual, 123)
 			So(some.UnwrapOrElse(func() int { return 456 }), ShouldEqual, 123)
 			So(some.UnwrapOrDefault(), ShouldEqual, 123)
+
+			So(Wrap(some.Value), ShouldEqual, some)
 		})
 
 		none := None[int]()
@@ -42,6 +44,8 @@ func TestOption(t *testing.T) {
 			So(none.UnwrapOr(456), ShouldEqual, 456)
 			So(none.UnwrapOrElse(func() int { return 456 }), ShouldEqual, 456)
 			So(none.UnwrapOrDefault(), ShouldEqual, 0)
+
+			So(Wrap[int](nil), ShouldEqual, none)
 		})
 	})
 }
