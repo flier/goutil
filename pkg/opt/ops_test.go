@@ -112,7 +112,7 @@ func ExampleUnzip() {
 }
 
 func TestOps(t *testing.T) {
-	Convey("Given some new option", t, func() {
+	Convey("Given some new options", t, func() {
 		some := Some(123)
 		some2 := Some(456)
 		none := None[int]()
