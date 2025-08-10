@@ -13,6 +13,8 @@ jobs:
     strategy:
       matrix:
         golang: ["stable", "oldstable", ""]
+    env:
+      GOEXPERIMENT: aliastypeparams
     steps:
       - uses: actions/checkout@v4
 
