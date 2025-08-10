@@ -176,12 +176,12 @@ func Flatten[T any](o Option[Option[T]]) Option[T] {
 // Zips x with y Option.
 //
 // If x is Some(s) and y is Some(o), this method returns Some((s, o)). Otherwise, None is returned.
-func Zip[T, U any](x Option[T], y Option[U]) Option[tuple.T2[T, U]] {
+func Zip[T, U any](x Option[T], y Option[U]) Option[tuple.Tuple2[T, U]] {
 	if x.IsSome() && y.IsSome() {
 		return Some(tuple.New2(x.unwrap(), y.unwrap()))
 	}
 
-	return None[tuple.T2[T, U]]()
+	return None[tuple.Tuple2[T, U]]()
 }
 
 // Zips x and y Option with function f.
