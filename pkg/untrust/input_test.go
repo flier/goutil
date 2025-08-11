@@ -8,6 +8,7 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 
+	"github.com/flier/goutil/pkg/opt"
 	"github.com/flier/goutil/pkg/untrust"
 )
 
@@ -123,6 +124,107 @@ func TestReadAll(t *testing.T) {
 	})
 }
 
+func TestReadAllOptional(t *testing.T) {
+	Convey("Given some input", t, func() {
+		input := opt.Some(untrust.Input([]byte("foo")))
+
+		Convey("Then read all input", func() {
+			_, err := untrust.ReadAllOptional(input, untrust.ErrEndOfInput,
+				func(r opt.Option[*untrust.Reader]) (s any, err error) {
+					if r.IsSome() {
+						r := r.Unwrap()
+
+						So(r.Peek('f'), ShouldBeTrue)
+
+						b, err := r.ReadByte()
+						So(err, ShouldBeNil)
+						So(b, ShouldEqual, 'f')
+
+						So(r.Peek('f'), ShouldBeFalse)
+
+						b, err = r.ReadByte()
+						So(err, ShouldBeNil)
+						So(b, ShouldEqual, 'o')
+
+						b, err = r.ReadByte()
+						So(err, ShouldBeNil)
+						So(b, ShouldEqual, 'o')
+
+						So(r.AtEnd(), ShouldBeTrue)
+
+						So(r.Peek('f'), ShouldBeFalse)
+					}
+
+					return
+				})
+
+			So(err, ShouldBeNil)
+		})
+
+		Convey("Then read all with unconsumed input", func() {
+			_, err := untrust.ReadAllOptional(input, untrust.ErrEndOfInput,
+				func(r opt.Option[*untrust.Reader]) (s any, err error) {
+					if r.IsSome() {
+						r := r.Unwrap()
+
+						b, err := r.ReadByte()
+						So(err, ShouldBeNil)
+						So(b, ShouldEqual, 'f')
+
+						So(r.AtEnd(), ShouldBeFalse)
+					}
+
+					return
+				})
+
+			So(err, ShouldWrap, untrust.ErrEndOfInput)
+		})
+
+		Convey("Then read all without input", func() {
+			_, err := untrust.ReadAllOptional(opt.None[untrust.Input](), untrust.ErrEndOfInput,
+				func(r opt.Option[*untrust.Reader]) (s any, err error) {
+					So(r.IsNone(), ShouldBeTrue)
+
+					return
+				})
+
+			So(err, ShouldBeNil)
+		})
+
+		Convey("Then read all with error returned", func() {
+			_, err := untrust.ReadAllOptional(input, untrust.ErrEndOfInput,
+				func(r opt.Option[*untrust.Reader]) (s any, err error) {
+					err = io.ErrShortBuffer
+
+					return
+				})
+
+			So(err, ShouldWrap, io.ErrShortBuffer)
+		})
+
+		Convey("Then read after skipping must not panic", func() {
+			_, err := untrust.ReadAllOptional(input, untrust.ErrEndOfInput,
+				func(r opt.Option[*untrust.Reader]) (s string, err error) {
+					if r.IsSome() {
+						r := r.Unwrap()
+
+						_, err = r.ReadBytesToEnd()
+						So(err, ShouldBeNil)
+
+						_, err = r.ReadByte()
+						So(err, ShouldWrap, untrust.ErrEndOfInput)
+
+						_, err = r.ReadBytesToEnd()
+					}
+
+					return
+				})
+
+			So(err, ShouldBeNil)
+		})
+	})
+}
+
 func TestReadPartial(t *testing.T) {
 	Convey("Given some input", t, func() {
 		input := untrust.Input([]byte("foobar"))
@@ -203,6 +305,32 @@ func TestReadBytes(t *testing.T) {
 			})
 
 			So(err, ShouldWrap, untrust.ErrEndOfInput)
+		})
+
+		Convey("Then read a reader", func() {
+			r := untrust.NewReader(input)
+
+			b, err := r.ReadByte()
+			So(err, ShouldBeNil)
+			So(b, ShouldEqual, 'f')
+
+			Convey("Then clone the reader", func() {
+				cr := r.Clone()
+
+				rest, err := cr.ReadBytesToEnd()
+				So(err, ShouldBeNil)
+				So(rest.AsSliceLessSafe(), ShouldEqual, []byte("oo"))
+				So(cr.AtEnd(), ShouldBeTrue)
+
+				Convey("Then read the original reader", func() {
+					So(r.AtEnd(), ShouldBeFalse)
+
+					rest, err := r.ReadBytesToEnd()
+					So(err, ShouldBeNil)
+					So(rest.AsSliceLessSafe(), ShouldEqual, []byte("oo"))
+					So(r.AtEnd(), ShouldBeTrue)
+				})
+			})
 		})
 	})
 }
