@@ -1,8 +1,6 @@
 package untrust
 
 import (
-	"bytes"
-
 	"github.com/flier/goutil/pkg/opt"
 )
 
@@ -24,7 +22,7 @@ func (i Input) AsSliceLessSafe() []byte { return i }
 // Clone returns a copy of the `Input`.
 //
 // The elements are copied using assignment, so this is a shallow clone.
-func (i Input) Clone() Input { return bytes.Clone(i) }
+func (i Input) Clone() Input { return append([]byte{}, i...) }
 
 // Calls read with the given input as a [Reader], ensuring that read consumed the entire input.
 //
