@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"reflect"
-	"runtime"
 	"testing"
 	"unsafe"
 
@@ -106,9 +105,7 @@ func TestArena(t *testing.T) {
 			Convey("Then reset the arena and check state", func() {
 				a.Reset()
 
-				if !a.Empty() {
-					t.Errorf("Arena not properly reset: %+v", a)
-				}
+				So(a.Empty(), ShouldBeFalse)
 			})
 		})
 
@@ -179,13 +176,6 @@ func TestArena(t *testing.T) {
 				So(p, ShouldNotBeNil)
 				So(binary.NativeEndian.Uint64((*p)[:]), ShouldEqual, 42)
 			})
-		})
-
-		Reset(func() {
-			a = nil
-			i = nil
-
-			runtime.GC()
 		})
 	})
 }

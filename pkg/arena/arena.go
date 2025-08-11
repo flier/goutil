@@ -57,7 +57,7 @@ func New[T any](a *Arena, v T) (p *T) {
 //
 // Note: The returned pointer points to uninitialized memory.
 func Alloc[T any](a *Arena) (p *T) {
-	p = (*T)(a.Alloc(unsafe.Sizeof(*p), unsafe.Alignof(*p)))
+	p = (*T)(a.Alloc(unsafe.Sizeof(*new(T)), unsafe.Alignof(*new(T))))
 
 	return
 }
@@ -67,7 +67,7 @@ func Alloc[T any](a *Arena) (p *T) {
 // It takes a pointer to the original object and returns a pointer to the newly allocated object of type R.
 // The function uses the Arena's Realloc method to handle the memory reallocation, adjusting the size and alignment as needed.
 func Realloc[R, T any](a *Arena, p *T) (r *R) {
-	return (*R)(a.Realloc(unsafe.Pointer(p), unsafe.Sizeof(*p), unsafe.Sizeof(*r), unsafe.Alignof(*r)))
+	return (*R)(a.Realloc(unsafe.Pointer(p), unsafe.Sizeof(*new(T)), unsafe.Sizeof(*new(R)), unsafe.Alignof(*new(R))))
 }
 
 type Arena struct {
@@ -89,16 +89,14 @@ func (a *Arena) Alloc(size, align uintptr) unsafe.Pointer {
 	mask := maxAlign - 1
 	size = (size + mask) &^ mask
 
-	// Then, replace the size with the size in pointer-sized words. This does not
-	// result in any loss of size, since size is now a multiple of the uintptr
-	// size.
+	// Then, replace the size with the size in pointer-sized words.
+	// This does not result in any loss of size, since size is now a multiple of the uintptr size.
 	words := size / maxAlign
 
-	// Next, check if we have enough space left for this chunk. If there isn't,
-	// we need to grow.
+	// Next, check if we have enough space left for this chunk. If there isn't, we need to grow.
 	if a.left < words {
-		// Pick whichever is largest: the minimum allocation size, twice the last
-		// allocation, or the next power of two after words.
+		// Pick whichever is largest: the minimum allocation size, twice the last allocation,
+		// or the next power of two after words.
 		a.cap = max(minWords, a.cap*2, nextPow2(words))
 		p := a.allocChunk(a.cap)
 		a.next = uintptr(p)
@@ -152,10 +150,10 @@ func init() {
 		pools[i].New = func() any {
 			return reflect.New(reflect.StructOf([]reflect.StructField{
 				{
-					Name: "X0",
+					Name: "Buffer",
 					Type: reflect.ArrayOf(1<<i, reflect.TypeFor[uintptr]()),
 				},
-				{Name: "X1", Type: reflect.TypeFor[unsafe.Pointer]()},
+				{Name: "Arena", Type: reflect.TypeFor[unsafe.Pointer]()},
 			})).UnsafePointer()
 		}
 	}
@@ -163,26 +161,31 @@ func init() {
 
 func (a *Arena) allocChunk(words uintptr) unsafe.Pointer {
 	log := bits.TrailingZeros(uint(words))
-	chunk := pools[log].Get().(unsafe.Pointer)
 
 	if len(a.chunks) > log {
-		setChunkEnd(chunk, words, a.chunks[log])
-
-		a.chunks[log] = chunk
-	} else {
-		setChunkEnd(chunk, words, unsafe.Pointer(a))
-
-		// If this is the first chunk allocated, set a finalizer.
-		if a.chunks == nil {
-			runtime.SetFinalizer(a, (*Arena).finalize)
-		}
-
-		// Place the returned chunk at the offset in a.chunks that
-		// corresponds to its log, so we can identify its size easily
-		// in the loop above.
-		a.chunks = append(a.chunks, make([]unsafe.Pointer, log+1-len(a.chunks))...)
-		a.chunks[log] = chunk
+		// If we've already allocated a chunk of this size in a previous arena
+		// generation, return it.
+		//
+		// This relies on the fact that an arena never tries to allocate the same
+		// size of chunk twice between calls to Reset().
+		return a.chunks[log]
 	}
+
+	chunk := pools[log].Get().(unsafe.Pointer)
+
+	// Offset to the end of the chunk, and write a to it.
+	setChunkEnd(chunk, words, a)
+
+	// If this is the first chunk allocated, set a finalizer.
+	if a.chunks == nil {
+		runtime.SetFinalizer(a, (*Arena).finalize)
+	}
+
+	// Place the returned chunk at the offset in a.chunks that
+	// corresponds to its log, so we can identify its size easily
+	// in the loop above.
+	a.chunks = append(a.chunks, make([]unsafe.Pointer, log+1-len(a.chunks))...)
+	a.chunks[log] = chunk
 
 	return chunk
 }
@@ -205,7 +208,8 @@ func nextPow2(n uintptr) uintptr {
 	return uintptr(1) << bits.Len(uint(n))
 }
 
-func setChunkEnd(chunk unsafe.Pointer, words uintptr, p unsafe.Pointer) {
+func setChunkEnd(chunk unsafe.Pointer, words uintptr, a *Arena) {
 	end := unsafe.Add(chunk, words*unsafe.Sizeof(uintptr(0)))
-	*(*unsafe.Pointer)(end) = p
+
+	*(**Arena)(end) = a
 }
