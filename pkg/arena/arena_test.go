@@ -35,7 +35,7 @@ func bench[T any](b *testing.B) {
 	b.Run(name, func(b *testing.B) {
 		b.Run("arena.alloc", func(b *testing.B) {
 			b.SetBytes(n)
-			for b.Loop() {
+			for n := 0; n < b.N; n++ {
 				a := new(arena.Arena)
 				for i := 0; i < runs; i++ {
 					sink = arena.Alloc[T](a)
@@ -47,7 +47,7 @@ func bench[T any](b *testing.B) {
 			var v T
 
 			b.SetBytes(n)
-			for b.Loop() {
+			for n := 0; n < b.N; n++ {
 				a := new(arena.Arena)
 				for i := 0; i < runs; i++ {
 					sink = arena.New(a, v)
@@ -57,7 +57,7 @@ func bench[T any](b *testing.B) {
 
 		b.Run("new", func(b *testing.B) {
 			b.SetBytes(n)
-			for b.Loop() {
+			for n := 0; n < b.N; n++ {
 				for i := 0; i < runs; i++ {
 					sink = new(T)
 				}
