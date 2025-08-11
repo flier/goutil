@@ -40,13 +40,24 @@ type Allocator interface {
 	Alloc(size, align uintptr) unsafe.Pointer
 }
 
-// New allocates memory for a value of type T from the provided Arena and returns a pointer to it.
+// New allocates memory for a value of type T from the provided Arena,
+// initializes it with the given value v, and returns a pointer to the allocated value.
+//
+// The memory is allocated with the size and alignment required for type T.
+func New[T any](a *Arena, v T) (p *T) {
+	p = Alloc[T](a)
+	*p = v
+
+	return
+}
+
+// Alloc allocates memory for a value of type T from the provided Arena and returns a pointer to it.
 //
 // The allocated memory is properly sized and aligned for type T.
+//
 // Note: The returned pointer points to uninitialized memory.
-func New[T any](a *Arena, v T) (p *T) {
-	p = (*T)(a.Alloc(unsafe.Sizeof(v), unsafe.Alignof(v)))
-	*p = v
+func Alloc[T any](a *Arena) (p *T) {
+	p = (*T)(a.Alloc(unsafe.Sizeof(*p), unsafe.Alignof(*p)))
 
 	return
 }

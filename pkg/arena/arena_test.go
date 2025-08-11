@@ -33,13 +33,23 @@ func bench[T any](b *testing.B) {
 	name := fmt.Sprintf("%v", reflect.TypeFor[T]())
 
 	b.Run(name, func(b *testing.B) {
-		b.Run("arena", func(b *testing.B) {
+		b.Run("arena.alloc", func(b *testing.B) {
 			b.SetBytes(n)
 			for b.Loop() {
 				a := new(arena.Arena)
 				for i := 0; i < runs; i++ {
-					var v T
+					sink = arena.Alloc[T](a)
+				}
+			}
+		})
 
+		b.Run("arena.new", func(b *testing.B) {
+			var v T
+
+			b.SetBytes(n)
+			for b.Loop() {
+				a := new(arena.Arena)
+				for i := 0; i < runs; i++ {
 					sink = arena.New(a, v)
 				}
 			}
