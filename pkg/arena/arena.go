@@ -19,7 +19,6 @@
 //
 // Types:
 //   - [Arena]: Represents a memory arena for fast allocation.
-//   - Alloc[T]: Allocates an object of type T in the arena.
 //
 // Functions:
 //   - [Arena.Alloc]: Allocates a chunk of memory with the specified size and alignment.
@@ -70,6 +69,11 @@ func Realloc[R, T any](a *Arena, p *T) (r *R) {
 	return (*R)(a.Realloc(unsafe.Pointer(p), unsafe.Sizeof(*new(T)), unsafe.Sizeof(*new(R)), unsafe.Alignof(*new(R))))
 }
 
+// Arena represents a memory allocation area that manages a contiguous block of memory.
+//
+// It tracks the next available address, the remaining space (left), the total capacity (cap),
+// and a slice of pointers to allocated memory chunks. Arena is typically used for efficient
+// allocation and deallocation of memory in bulk, reducing overhead compared to individual allocations.
 type Arena struct {
 	next      uintptr
 	left, cap uintptr
@@ -84,6 +88,24 @@ const (
 	minWords uintptr = 8
 )
 
+// Alloc allocates a memory block of the specified size and alignment from the arena.
+//
+// The size is rounded up to the nearest multiple of the arena's maximum alignment.
+// If there is not enough space left in the current chunk, the arena grows by allocating
+// a new chunk with a capacity determined by the largest of the minimum allocation size,
+// twice the last allocation, or the next power of two after the requested size.
+// Returns a pointer to the allocated memory block.
+//
+// Parameters:
+//
+//	size  - the number of bytes to allocate
+//	align - the required alignment for the allocation
+//
+// Returns:
+//
+//	unsafe.Pointer to the allocated memory block
+//
+// Note: Use [New] for safer memory allocation.
 func (a *Arena) Alloc(size, align uintptr) unsafe.Pointer {
 	// First, round the size up to the alignment of every object in the arena.
 	mask := maxAlign - 1
@@ -111,6 +133,12 @@ func (a *Arena) Alloc(size, align uintptr) unsafe.Pointer {
 	return unsafe.Pointer(p) //nolint:govet
 }
 
+// Realloc resizes a previously allocated memory block pointed to by ptr from oldSize to newSize,
+// ensuring the new allocation is aligned to align bytes.
+//
+// If the new size is less than or equal to the old size, the original pointer is returned.
+// If the block is the most recent allocation and there is enough space, the block is grown in-place.
+// Otherwise, a new memory block is allocated, the contents are copied, and the new pointer is returned.
 func (a *Arena) Realloc(ptr unsafe.Pointer, oldSize, newSize, align uintptr) unsafe.Pointer {
 	// First, round the size up to the alignment of every object in the arena.
 	mask := maxAlign - 1

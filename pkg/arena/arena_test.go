@@ -105,7 +105,7 @@ func TestArena(t *testing.T) {
 			Convey("Then reset the arena and check state", func() {
 				a.Reset()
 
-				So(a.Empty(), ShouldBeFalse)
+				So(a.Empty(), ShouldBeTrue)
 			})
 		})
 
