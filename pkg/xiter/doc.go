@@ -2,6 +2,10 @@
 //
 // # Construction
 //
+// [Chars] returns an iterator sequence over the runes in the given byte slice.
+//
+//	func Chars(b []byte) iter.Seq[rune]
+//
 // [Cycle] repeats an iterator endlessly.
 //
 //	func Cycle[T any](x iter.Seq[T]) iter.Seq[T]
