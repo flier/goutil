@@ -68,6 +68,14 @@
 //
 // # Mapping
 //
+// [Accumulate] makes an iterator that returns accumulated sums.
+//
+//	func Accumulate[T Number](x iter.Seq[T]) iter.Seq[T]
+//
+// [AccumulateBy] makes an iterator that returns accumulated results from other binary functions.
+//
+//	func AccumulateBy[T Number](x iter.Seq[T], f func(T, T) T) iter.Seq[T]
+//
 // [Chain] converts the arguments to iterators and links them together, in a chain.
 //
 //	func Chain[T any](x ...iter.Seq[T]) iter.Seq[T]
