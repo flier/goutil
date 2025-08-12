@@ -35,7 +35,13 @@ func Resource[S, T any](start func() (S, error), next func(S) (T, error), stop f
 func Lines(r io.ReadCloser) iter.Seq[string] {
 	return Resource(
 		func() (*bufio.Scanner, error) { return bufio.NewScanner(r), nil },
-		func(s *bufio.Scanner) (string, error) { return s.Text(), s.Err() },
+		func(s *bufio.Scanner) (string, error) {
+			if s.Scan() {
+				return s.Text(), nil
+			}
+
+			return "", io.EOF
+		},
 		func(s *bufio.Scanner) { _ = r.Close() },
 	)
 }

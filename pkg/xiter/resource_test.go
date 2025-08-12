@@ -54,7 +54,7 @@ func ExampleLines() {
 	f := io.NopCloser(strings.NewReader(poem))
 
 	for line := range Lines(f) {
-		fmt.Println(line)
+		fmt.Println(strings.TrimSpace(line))
 	}
 
 	// Output:

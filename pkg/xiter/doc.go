@@ -321,6 +321,18 @@
 //
 //	func MinByKey[T any, B cmp.Ordered](x iter.Seq[T], f func(T) B) (r T)
 //
+// [MinMax] returns the minimum and maximum elements of an iterator.
+//
+//	func MinMax[T cmp.Ordered](x iter.Seq[T]) tuple.Tuple2[T, T]
+//
+// [MinMaxBy] returns the minimum and maximum elements of an iterator with respect to the specified comparison function.
+//
+//	func MinMaxBy[T cmp.Ordered](x iter.Seq[T], f func(T, T) int) tuple.Tuple2[T, T]
+//
+// [MinMaxByKey] returns the element that gives the minimum and maximum value from the specified function.
+//
+//	func MinMaxByKey[T any, B cmp.Ordered](x iter.Seq[T], f func(T) B) tuple.Tuple2[T, T]
+//
 // [Next] returns the next value.
 //
 //	func Next[T any](s iter.Seq[T]) opt.Option[T]

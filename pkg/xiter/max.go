@@ -16,14 +16,11 @@ func Max[T cmp.Ordered](x iter.Seq[T]) (r T) {
 
 	for v := range x {
 		if p == nil {
-			p = &v
+			p = &r
+			*p = v
 		} else {
 			*p = max(*p, v)
 		}
-	}
-
-	if p != nil {
-		r = *p
 	}
 
 	return
@@ -37,13 +34,12 @@ func MaxBy[T any](x iter.Seq[T], f func(T, T) int) (r T) {
 	var p *T
 
 	for v := range x {
-		if p == nil || f(*p, v) <= 0 {
-			p = &v
+		if p == nil {
+			p = &r
+			*p = v
+		} else if f(*p, v) <= 0 {
+			*p = v
 		}
-	}
-
-	if p != nil {
-		r = *p
 	}
 
 	return
@@ -66,14 +62,11 @@ func MaxByKey[T any, B cmp.Ordered](x iter.Seq[T], f func(T) B) (r T) {
 
 	for v := range x {
 		if p == nil {
-			p = &v
+			p = &r
+			*p = v
 		} else if f(*p) <= f(v) {
-			p = &v
+			*p = v
 		}
-	}
-
-	if p != nil {
-		r = *p
 	}
 
 	return
