@@ -30,6 +30,10 @@
 //
 //	func Iterate[T any](init T, f func(T) T) iter.Seq[T]
 //
+// [Lines] returns an iterator of lines from the given [io.ReadCloser].
+//
+//	func Lines(r io.ReadCloser) iter.Seq[string]
+//
 // [Once] creates an iterator that yields an element exactly once.
 //
 //	func Once[T any](v T) iter.Seq[T]

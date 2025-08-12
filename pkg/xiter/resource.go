@@ -2,7 +2,11 @@
 
 package xiter
 
-import "iter"
+import (
+	"bufio"
+	"io"
+	"iter"
+)
 
 // Resource emits an iterator of values for the given resource.
 func Resource[S, T any](start func() (S, error), next func(S) (T, error), stop func(S)) iter.Seq[T] {
@@ -25,4 +29,13 @@ func Resource[S, T any](start func() (S, error), next func(S) (T, error), stop f
 			}
 		}
 	}
+}
+
+// Lines returns an iterator of lines from the given [io.ReadCloser].
+func Lines(r io.ReadCloser) iter.Seq[string] {
+	return Resource(
+		func() (*bufio.Scanner, error) { return bufio.NewScanner(r), nil },
+		func(s *bufio.Scanner) (string, error) { return s.Text(), s.Err() },
+		func(s *bufio.Scanner) { _ = r.Close() },
+	)
 }

@@ -44,3 +44,22 @@ func ExampleResource() {
 	// Her early leaf's a flower;
 	// But only so an hour.
 }
+
+func ExampleLines() {
+	const poem = `Nature's first green is gold,
+	Her hardest hue to hold.
+	Her early leaf's a flower;
+	But only so an hour.`
+
+	f := io.NopCloser(strings.NewReader(poem))
+
+	for line := range Lines(f) {
+		fmt.Println(line)
+	}
+
+	// Output:
+	// Nature's first green is gold,
+	// Her hardest hue to hold.
+	// Her early leaf's a flower;
+	// But only so an hour.
+}
