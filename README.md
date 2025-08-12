@@ -8,6 +8,7 @@
 - [res](#res) Error handling with the Result type.
 - [tuple](#tuple) A finite heterogeneous sequence, (T0, T1, ..).
 - [untrust](#untrust) Safe, fast, zero-panic, zero-crashing, zero-allocation parsing of untrusted inputs.
+- [xiter](#xiter) Provides utilities for enhanced iteration patterns and helpers.
 
 ## Package
 
@@ -34,3 +35,7 @@ A finite heterogeneous sequence, (T0, T1, ..).
 ### untrust [![Go Reference](https://pkg.go.dev/badge/github.com/flier/goutil)](https://pkg.go.dev/github.com/flier/goutil/pkg/untrust)
 
 Safe, fast, zero-panic, zero-crashing, zero-allocation parsing of untrusted inputs.
+
+### xiter [![Go Reference](https://pkg.go.dev/badge/github.com/flier/goutil)](https://pkg.go.dev/github.com/flier/goutil/pkg/xiter)
+
+Provides utilities for enhanced iteration patterns and helpers.
