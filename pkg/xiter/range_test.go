@@ -36,6 +36,22 @@ func ExampleRange_map() {
 	// [3 5 7]
 }
 
+func ExampleRangeFrom() {
+	s := RangeFrom(5)
+	fmt.Println(slices.Collect(Take(s, 5))) // [5 6 7 8 9]
+
+	s = RangeFrom(0)
+	fmt.Println(slices.Collect(Take(s, 5))) // [0 1 2 3 4]
+
+	s = RangeFrom(-3)
+	fmt.Println(slices.Collect(Take(s, 5))) // [-3 -2 -1 0 1]
+
+	// Output:
+	// [5 6 7 8 9]
+	// [0 1 2 3 4]
+	// [-3 -2 -1 0 1]
+}
+
 func ExampleRangeTo() {
 	s := RangeTo(5)
 	fmt.Println(slices.Collect(s)) // [0 1 2 3 4]

@@ -7,18 +7,18 @@ import "iter"
 // Take creates an iterator that yields the first n elements, or fewer if the underlying iterator ends sooner.
 func Take[T any](x iter.Seq[T], n int) iter.Seq[T] {
 	return func(yield func(T) bool) {
-		if n == 0 {
+		if n <= 0 {
 			return
 		}
 
 		var i int
 
 		for v := range x {
-			if i += 1; i > n {
+			if !yield(v) {
 				break
 			}
 
-			if !yield(v) {
+			if i += 1; i >= n {
 				break
 			}
 		}
@@ -33,18 +33,18 @@ func TakeFunc[T any](n int) MappingFunc[T, T] {
 // Take2 creates an iterator that yields the first n key-values, or fewer if the underlying iterator ends sooner.
 func Take2[K, V any](x iter.Seq2[K, V], n int) iter.Seq2[K, V] {
 	return func(yield func(K, V) bool) {
-		if n == 0 {
+		if n <= 0 {
 			return
 		}
 
 		var i int
 
 		for k, v := range x {
-			if i += 1; i > n {
+			if !yield(k, v) {
 				break
 			}
 
-			if !yield(k, v) {
+			if i += 1; i >= n {
 				break
 			}
 		}

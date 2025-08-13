@@ -22,6 +22,10 @@ import (
 //	}
 func Chunks[T any](x iter.Seq[T], n int) iter.Seq[[]T] {
 	return func(yield func([]T) bool) {
+		if n <= 0 {
+			return
+		}
+
 		chunk := make([]T, 0, n)
 
 		for v := range x {
@@ -31,10 +35,10 @@ func Chunks[T any](x iter.Seq[T], n int) iter.Seq[[]T] {
 
 			if len(chunk) == n {
 				if !yield(chunk) {
-					break
+					return
 				}
 
-				chunk = nil
+				chunk = make([]T, 0, n)
 			}
 		}
 
@@ -83,7 +87,7 @@ func ChunkByKey[T any, B comparable](x iter.Seq[T], f func(T) B) iter.Seq[[]T] {
 				cur = &b
 			} else if *cur != b {
 				if !yield(chunk) {
-					break
+					return
 				}
 
 				cur = &b
