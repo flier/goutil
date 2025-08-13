@@ -92,6 +92,10 @@
 //
 //	func Chunks[T any](x iter.Seq[T], n int) iter.Seq[[]T]
 //
+// ChunkExact splits the input sequence x into consecutive chunks of exactly n elements.
+//
+//	func ChunkExact[T any](x iter.Seq[T], n int) iter.Seq[[]T]
+//
 // [ChunkBy] groups consecutive elements from the input sequence x into slices,
 // starting a new chunk each time the predicate function f returns true for an element.
 //

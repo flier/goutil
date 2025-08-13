@@ -15,22 +15,16 @@ func Dedup[T comparable](x iter.Seq[T]) iter.Seq[T] {
 
 		for v := range x {
 			if prev == nil {
-				prev = &v
-
-				if !yield(v) {
-					break
-				}
-			} else {
-				if *prev == v {
-					continue
-				}
-
-				if !yield(v) {
-					break
-				}
-
-				prev = &v
+				prev = new(T)
+			} else if *prev == v {
+				continue
 			}
+
+			if !yield(v) {
+				break
+			}
+
+			*prev = v
 		}
 	}
 }
@@ -45,22 +39,16 @@ func DedupBy[T any](x iter.Seq[T], f func(T, T) bool) iter.Seq[T] {
 
 		for v := range x {
 			if prev == nil {
-				prev = &v
-
-				if !yield(v) {
-					break
-				}
-			} else {
-				if f(*prev, v) {
-					continue
-				}
-
-				if !yield(v) {
-					break
-				}
-
-				prev = &v
+				prev = new(T)
+			} else if f(*prev, v) {
+				continue
 			}
+
+			if !yield(v) {
+				break
+			}
+
+			*prev = v
 		}
 	}
 }
@@ -80,22 +68,16 @@ func DedupByKey[T any, B comparable](x iter.Seq[T], f func(T) B) iter.Seq[T] {
 
 		for v := range x {
 			if prev == nil {
-				prev = &v
-
-				if !yield(v) {
-					break
-				}
-			} else {
-				if f(*prev) == f(v) {
-					continue
-				}
-
-				if !yield(v) {
-					break
-				}
-
-				prev = &v
+				prev = new(T)
+			} else if f(*prev) == f(v) {
+				continue
 			}
+
+			if !yield(v) {
+				break
+			}
+
+			*prev = v
 		}
 	}
 }
@@ -112,24 +94,16 @@ func DedupByKey2[K, V any, B comparable](x iter.Seq2[K, V], f func(K, V) B) iter
 
 		for k, v := range x {
 			if prev == nil {
-				p := tuple.New2(k, v)
-				prev = &p
-
-				if !yield(k, v) {
-					break
-				}
-			} else {
-				if f(prev.Unpack()) == f(k, v) {
-					continue
-				}
-
-				if !yield(k, v) {
-					break
-				}
-
-				p := tuple.New2(k, v)
-				prev = &p
+				prev = new(tuple.Tuple2[K, V])
+			} else if f(prev.Unpack()) == f(k, v) {
+				continue
 			}
+
+			if !yield(k, v) {
+				break
+			}
+
+			*prev = tuple.New2(k, v)
 		}
 	}
 }

@@ -12,14 +12,6 @@ import (
 // if the total number of elements in x is not a multiple of n.
 // The function returns an iter.Seq of slices, where each slice contains up to n elements.
 // If n is less than or equal to zero, no chunks will be yielded.
-//
-// Example usage:
-//
-//	seq := slices.Value([]int{1, 2, 3, 4, 5})
-//
-//	for chunk := range Chunks(seq, 2) {
-//	    fmt.Println(chunk) // Output: [1 2], [3 4], [5]
-//	}
 func Chunks[T any](x iter.Seq[T], n int) iter.Seq[[]T] {
 	return func(yield func([]T) bool) {
 		if n <= 0 {
@@ -29,9 +21,7 @@ func Chunks[T any](x iter.Seq[T], n int) iter.Seq[[]T] {
 		chunk := make([]T, 0, n)
 
 		for v := range x {
-			if len(chunk) < n {
-				chunk = append(chunk, v)
-			}
+			chunk = append(chunk, v)
 
 			if len(chunk) == n {
 				if !yield(chunk) {
@@ -44,6 +34,33 @@ func Chunks[T any](x iter.Seq[T], n int) iter.Seq[[]T] {
 
 		if len(chunk) > 0 {
 			yield(chunk)
+		}
+	}
+}
+
+// ChunkExact splits the input sequence x into consecutive chunks of exactly n elements.
+//
+// Each chunk is yielded as a slice of T with length n. If the total number of elements in x
+// is not a multiple of n, the remaining elements at the end are discarded and not yielded.
+// If n is less than or equal to zero, no chunks will be yielded.
+func ChunkExact[T any](x iter.Seq[T], n int) iter.Seq[[]T] {
+	return func(yield func([]T) bool) {
+		if n <= 0 {
+			return
+		}
+
+		chunk := make([]T, 0, n)
+
+		for v := range x {
+			chunk = append(chunk, v)
+
+			if len(chunk) == n {
+				if !yield(chunk) {
+					return
+				}
+
+				chunk = make([]T, 0, n)
+			}
 		}
 	}
 }
@@ -103,27 +120,18 @@ func ChunkByKey[T any, B comparable](x iter.Seq[T], f func(T) B) iter.Seq[[]T] {
 	}
 }
 
-// ChunksFunc returns a MapFunc that splits an input sequence into consecutive chunks of size n.
+// ChunksFunc returns a MappingFunc that splits an input sequence into consecutive chunks of size n.
 // Each chunk is represented as a slice of type T. If the input sequence length is not a multiple of n,
 // the final chunk will contain the remaining elements.
-//
-// Example usage:
-//
-//	chunks := ChunksFunc[int](3)
-//	seq := slices.Values([]int{1, 2, 3, 4, 5, 6, 7})
-//	for chunk := range chunks(seq) {
-//	    fmt.Println(chunk) // Output: [1 2 3], [4 5 6], [7]
-//	}
-//
-// Parameters:
-//
-//	n int: The size of each chunk.
-//
-// Returns:
-//
-//	MapFunc[T, []T]: A function that maps a sequence of T to a sequence of []T (chunks).
 func ChunksFunc[T any](n int) MappingFunc[T, []T] {
 	return bind2(Chunks[T], n)
+}
+
+// ChunkExactFunc returns a MappingFunc that splits an input sequence into consecutive chunks of exactly n elements.
+// Each chunk is represented as a slice of type T. If the input sequence length is not a multiple of n,
+// the final chunk will contain the remaining elements.
+func ChunkExactFunc[T any](n int) MappingFunc[T, []T] {
+	return bind2(ChunkExact[T], n)
 }
 
 // ChunkByFunc returns an iterator that groups the elements of the input iterator x into

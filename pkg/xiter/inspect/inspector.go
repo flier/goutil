@@ -2,6 +2,7 @@ package inspect
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 )
@@ -72,7 +73,13 @@ func (i *Inspector) Start() {
 
 func (i *Inspector) Stop() {
 	i.WriteByte(']')
-	fmt.Println(i.String())
+
+	w := i.writer
+	if w == nil {
+		w = os.Stdout
+	}
+
+	_, _ = fmt.Fprintln(w, i.String())
 }
 
 func (i *Inspector) Inspect(v any) {

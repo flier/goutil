@@ -17,11 +17,11 @@ func Inspect[T any](x iter.Seq[T], opts ...inspect.Option) iter.Seq[T] {
 		defer i.Stop()
 
 		for v := range x {
-			i.Inspect(v)
-
 			if !yield(v) {
 				break
 			}
+
+			i.Inspect(v)
 		}
 	}
 }
@@ -40,11 +40,11 @@ func Inspect2[K, V any](x iter.Seq2[K, V], opts ...inspect.Option) iter.Seq2[K, 
 		defer i.Stop()
 
 		for k, v := range x {
-			i.Inspect2(k, v)
-
 			if !yield(k, v) {
 				break
 			}
+
+			i.Inspect2(k, v)
 		}
 	}
 }

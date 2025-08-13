@@ -1,8 +1,11 @@
 package inspect
 
+import "io"
+
 type options struct {
 	dump   func(any) string
 	dump2  func(any, any) string
+	writer io.Writer
 	format string
 	label  string
 	limit  int
@@ -47,4 +50,9 @@ func Dump(d func(any) string) Option {
 // Dump2 give a function to dump the key-value.
 func Dump2(d func(any, any) string) Option {
 	return func(o *options) { o.dump2 = d }
+}
+
+// Output sets the output to the writer.
+func Output(w io.Writer) Option {
+	return func(o *options) { o.writer = w }
 }

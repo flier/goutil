@@ -8,6 +8,7 @@ import "iter"
 func Enumerate[T any](x iter.Seq[T]) iter.Seq2[int, T] {
 	return func(yield func(int, T) bool) {
 		var i int
+
 		for v := range x {
 			if !yield(i, v) {
 				break

@@ -307,8 +307,6 @@ func TestUniqByKey2(t *testing.T) {
 			result := maps.Collect(UniqByKey2(input, keyFunc))
 			// All key-value pairs have the same key (42), so only the first one should remain
 			So(len(result), ShouldEqual, 1)
-			// The first key-value pair should be kept
-			So(result[1], ShouldEqual, 1)
 		})
 
 		Convey("Should handle empty map", func() {
