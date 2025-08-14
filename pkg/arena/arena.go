@@ -1,243 +1,174 @@
+// Package arena provides a low-level, relatively unsafe arena allocation
+// abstraction.
+//
+// # Design
+//
+// See <https://mcyoung.xyz/2025/04/21/go-arenas/>.
+//
+// Arenas are designed to only return pointers to data with pointer-free shape.
+// However, we would like to store pointers in this data, so that the arena can
+// point to itself (and to no other memory)
+//
+// This means that to store such data, the pointers must either live for the
+// same lifetime as the [Arena] value (such as by storing them alongside it) or
+// must point back into the Arena.
+//
+// We ensure this by making it so that holding a pointer onto any memory
+// allocated by an [Arena] will keep all memory reachable from it alive.
+// We achieve this by having the shape of each chunk allocated for the arena
+// contain a pointer to the arena as a header; each chunk thus must have the
+// shape
+//
+//	type chunk struct {
+//	  memory [N]uint64
+//	  arena *Arena
+//	}
+//
+// By holding a pointer into chunk.memory anywhere reachable by a GC root (such
+// as in a local variable) the GC will mark the allocation for the whole chunk
+// as live, and therefore mark the [*Arena] field as live. Tracing through
+// chunk.arena.chunks will mark all the other chunks as alive.
+//
+// Memory not directly allocated by an arena can be tied to it using
+// [Arena.KeepAlive]. Using this operation is very slow, since this is the one
+// part of the arena that is not re-used when calling [Arena.Free].
+
 //go:build go1.22
 
-// Package arena provides a simple memory arena allocator for Go, inspired by the article
-// [Cheating the Reaper in Go].
-//
-// The Arena type allows efficient allocation of memory for short-lived objects,
-// reducing GC pressure by allocating memory in large chunks and freeing all allocations
-// at once when the arena is reset or finalized.
-//
-// Usage:
-//
-//	a := new(arena.Arena)
-//	p := arena.Alloc[MyStruct](a)
-//
-// The package uses unsafe operations and reflection to manage memory chunks,
-// and sync.Pool to reuse memory efficiently.
-//
-// Note: This package is experimental and relies on unsafe features. Use with caution.
-//
-// Types:
-//   - [Arena]: Represents a memory arena for fast allocation.
-//
-// Functions:
-//   - [Arena.Alloc]: Allocates a chunk of memory with the specified size and alignment.
-//   - [Arena.Reset]: Resets the arena, releasing all allocations.
-//
-// [Cheating the Reaper in Go]: https://mcyoung.xyz/2025/04/21/go-arenas/
 package arena
 
 import (
-	"math/bits"
-	"reflect"
-	"runtime"
-	"sync"
 	"unsafe"
+
+	"github.com/flier/goutil/internal/debug"
+	"github.com/flier/goutil/pkg/xunsafe"
+	"github.com/flier/goutil/pkg/xunsafe/layout"
 )
 
-type Allocator interface {
-	Alloc(size, align uintptr) unsafe.Pointer
-}
-
-// New allocates memory for a value of type T from the provided Arena,
-// initializes it with the given value v, and returns a pointer to the allocated value.
+// Arena is an Arena for holding values of any type which does not contain
+// pointers.
 //
-// The memory is allocated with the size and alignment required for type T.
-func New[T any](a *Arena, v T) (p *T) {
-	p = Alloc[T](a)
-	*p = v
-
-	return
-}
-
-// Alloc allocates memory for a value of type T from the provided Arena and returns a pointer to it.
-//
-// The allocated memory is properly sized and aligned for type T.
-//
-// Note: The returned pointer points to uninitialized memory.
-func Alloc[T any](a *Arena) (p *T) {
-	p = (*T)(a.Alloc(unsafe.Sizeof(*new(T)), unsafe.Alignof(*new(T))))
-
-	return
-}
-
-// Realloc reallocates memory for an object of type T to an object of type R within the given Arena.
-//
-// It takes a pointer to the original object and returns a pointer to the newly allocated object of type R.
-// The function uses the Arena's Realloc method to handle the memory reallocation, adjusting the size and alignment as needed.
-func Realloc[R, T any](a *Arena, p *T) (r *R) {
-	return (*R)(a.Realloc(unsafe.Pointer(p), unsafe.Sizeof(*new(T)), unsafe.Sizeof(*new(R)), unsafe.Alignof(*new(R))))
-}
-
-// Arena represents a memory allocation area that manages a contiguous block of memory.
-//
-// It tracks the next available address, the remaining space (left), the total capacity (cap),
-// and a slice of pointers to allocated memory chunks. Arena is typically used for efficient
-// allocation and deallocation of memory in bulk, reducing overhead compared to individual allocations.
+// A zero Arena is empty and ready to use.
 type Arena struct {
-	next      uintptr
-	left, cap uintptr
-	chunks    []unsafe.Pointer
+	_ xunsafe.NoCopy
+
+	// Exported to allow for open-coding of Alloc() in some hot callsites,
+	// because Go won't inline it >_>
+	Next, End xunsafe.Addr[byte]
+	Cap       int // Always a power of 2.
+
+	// Blocks of memory allocated by this arena. Indexed by their size log 2.
+	blocks []*byte
+
+	// Data to keep around for the GC to mark whenever it marks an arena.
+	// Holding any pointer to the arena will keep anything here alive, too.
+	keep []unsafe.Pointer
 }
 
-func (a *Arena) Empty() bool { return a.next == 0 }
-func (a *Arena) Reset()      { a.next, a.left, a.cap = 0, 0, 0 }
+// Align is the alignment of all objects on the arena.
+const Align = int(unsafe.Sizeof(uintptr(0)))
 
-const (
-	maxAlign uintptr = 8 // Depends on target, this is for 64-bit.
-	minWords uintptr = 8
-)
-
-// Alloc allocates a memory block of the specified size and alignment from the arena.
-//
-// The size is rounded up to the nearest multiple of the arena's maximum alignment.
-// If there is not enough space left in the current chunk, the arena grows by allocating
-// a new chunk with a capacity determined by the largest of the minimum allocation size,
-// twice the last allocation, or the next power of two after the requested size.
-// Returns a pointer to the allocated memory block.
-//
-// Parameters:
-//
-//	size  - the number of bytes to allocate
-//	align - the required alignment for the allocation
-//
-// Returns:
-//
-//	unsafe.Pointer to the allocated memory block
-//
-// Note: Use [New] for safer memory allocation.
-func (a *Arena) Alloc(size, align uintptr) unsafe.Pointer {
-	// First, round the size up to the alignment of every object in the arena.
-	mask := maxAlign - 1
-	size = (size + mask) &^ mask
-
-	// Then, replace the size with the size in pointer-sized words.
-	// This does not result in any loss of size, since size is now a multiple of the uintptr size.
-	words := size / maxAlign
-
-	// Next, check if we have enough space left for this chunk. If there isn't, we need to grow.
-	if a.left < words {
-		// Pick whichever is largest: the minimum allocation size, twice the last allocation,
-		// or the next power of two after words.
-		a.cap = max(minWords, a.cap*2, nextPow2(words))
-		p := a.allocChunk(a.cap)
-		a.next = uintptr(p)
-		a.left = a.cap
+// New allocates a new value of type T on an arena.
+func New[T any](a *Arena, value T) *T {
+	layout := layout.Of[T]()
+	if layout.Align > Align {
+		panic("hyperpb: over-aligned object")
 	}
 
-	// Allocate the chunk by incrementing the pointer.
-	p := a.next
-	a.next += size
-	a.left -= words
-
-	return unsafe.Pointer(p) //nolint:govet
+	p := xunsafe.Cast[T](a.Alloc(layout.Size))
+	*p = value
+	return p
 }
 
-// Realloc resizes a previously allocated memory block pointed to by ptr from oldSize to newSize,
-// ensuring the new allocation is aligned to align bytes.
-//
-// If the new size is less than or equal to the old size, the original pointer is returned.
-// If the block is the most recent allocation and there is enough space, the block is grown in-place.
-// Otherwise, a new memory block is allocated, the contents are copied, and the new pointer is returned.
-func (a *Arena) Realloc(ptr unsafe.Pointer, oldSize, newSize, align uintptr) unsafe.Pointer {
-	// First, round the size up to the alignment of every object in the arena.
-	mask := maxAlign - 1
-	oldSize = (oldSize + mask) &^ mask
-	newSize = (newSize + mask) &^ mask
-
-	if newSize <= oldSize {
-		return ptr
-	}
-
-	// Check if this is the most recent allocation. If it is, we can grow in-place.
-	if a.next-oldSize == uintptr(ptr) {
-		// Check if we have enough space available for the
-		// requisite extra space.
-		need := (newSize - oldSize) / maxAlign
-		if a.left >= need {
-			// Grow in-place.
-			a.left -= need
-			return ptr
-		}
-	}
-
-	// Can't grow in place, allocate new memory and copy to it.
-	new := a.Alloc(newSize, align)
-	copy(
-		unsafe.Slice((*byte)(new), newSize),
-		unsafe.Slice((*byte)(ptr), oldSize),
-	)
-
-	return new
+// KeepAlive ensures that v is not swept by the GC until all pointers into the
+// arena go away.
+func (a *Arena) KeepAlive(v any) {
+	a.keep = append(a.keep, unsafe.Pointer(xunsafe.AnyData(v)))
 }
 
-var pools [64]sync.Pool
+// Alloc allocates memory with the given size.
+//
+// All memory is pointer-aligned. If zero is true, the memory will be zeroed.
+//
+//go:nosplit
+func (a *Arena) Alloc(size int) *byte {
+	// Align size to a pointer boundary.
+	size += Align - 1
+	size &^= Align - 1
 
-func init() {
-	for i := range pools {
-		pools[i].New = func() any {
-			return reflect.New(reflect.StructOf([]reflect.StructField{
-				{
-					Name: "Buffer",
-					Type: reflect.ArrayOf(1<<i, reflect.TypeFor[uintptr]()),
-				},
-				{Name: "Arena", Type: reflect.TypeFor[unsafe.Pointer]()},
-			})).UnsafePointer()
-		}
+	if a.Next.Add(size) <= a.End {
+		// Duplicating this block ensures that Go schedules this branch
+		// correctly. This block is the "hot" side of the branch.
+		p := a.Next.AssertValid()
+		a.Next = a.Next.Add(size)
+		a.Log("alloc", "%v:%v, %d:%d", p, a.Next, size, Align)
+		return p
+	}
+
+	a.Grow(size)
+	p := a.Next.AssertValid()
+	a.Next = a.Next.Add(size)
+	a.Log("alloc", "%v:%v, %d:%d", p, a.Next, size, Align)
+	return p
+}
+
+// Reserve ensures that at least size bytes can be allocated without calling
+// [Arena.Grow].
+func (a *Arena) Reserve(size int) {
+	if a.Next.Add(size) > a.End {
+		a.Grow(size)
 	}
 }
 
-func (a *Arena) allocChunk(words uintptr) unsafe.Pointer {
-	log := bits.TrailingZeros(uint(words))
+// Free resets this arena to an "empty" state, allowing all memory allocated by
+// it to be re-used.
+//
+// Although this can be used to amortize trips into Go's allocator, doing so
+// trades off safety: any memory allocated by the arena must not be referenced
+// after a call to Free.
+func (a *Arena) Free() {
+	// Discard all but the largest block, which we clear. This means that as
+	// an arena is re-used, we will eventually wind up learning the size of the
+	// largest block we need to allocate, and use only that one, meaning that
+	// "average" calls should never have to call Grow().
+	end := len(a.blocks) - 1
+	clear(a.blocks[:end])
+	xunsafe.Clear(a.blocks[end], 1<<end)
 
-	if len(a.chunks) > log {
-		// If we've already allocated a chunk of this size in a previous arena
-		// generation, return it.
-		//
-		// This relies on the fact that an arena never tries to allocate the same
-		// size of chunk twice between calls to Reset().
-		return a.chunks[log]
-	}
+	// Set up next/end/cap to point to the largest block.
+	a.Next = xunsafe.AddrOf(a.blocks[end])
+	a.End = a.Next.Add(1 << end)
+	a.Cap = 1 << end
 
-	chunk := pools[log].Get().(unsafe.Pointer)
-
-	// Offset to the end of the chunk, and write a to it.
-	setChunkEnd(chunk, words, a)
-
-	// If this is the first chunk allocated, set a finalizer.
-	if a.chunks == nil {
-		runtime.SetFinalizer(a, (*Arena).finalize)
-	}
-
-	// Place the returned chunk at the offset in a.chunks that
-	// corresponds to its log, so we can identify its size easily
-	// in the loop above.
-	a.chunks = append(a.chunks, make([]unsafe.Pointer, log+1-len(a.chunks))...)
-	a.chunks[log] = chunk
-
-	return chunk
+	// Order doesn't matter here: nothing in a.blocks can point into a.keep,
+	// because the only GC-visible pointers in a.blocks are pointers back to
+	// a, the arena header.
+	//
+	// We set this to nil because clearing this will walk us right into an
+	// unavoidable bulk write barrier. By writing nil, we only pay for a fast
+	// single-pointer write barrier, and make cleaning up the handful of bytes
+	// this throws out the GC's problem.
+	//
+	// In profiling, it turns out that doing clear(a.keep) is several times
+	// more expensive than the noscan clear that happens below.
+	a.keep = nil
 }
 
-func (a *Arena) finalize() {
-	for log, chunk := range a.chunks {
-		if chunk == nil {
-			continue
-		}
+// Grow allocates fresh memory onto next of at least the given size.
+//
+//go:nosplit
+func (a *Arena) Grow(size int) {
+	xunsafe.Escape(a)
+	p, n := a.allocChunk(max(size, a.Cap*2))
+	// No need to KeepAlive(p) this pointer, since allocChunk sticks it in the
+	// dedicated memory block array.
 
-		words := uintptr(1) << log
-
-		setChunkEnd(chunk, words, nil) // Make sure that we don't leak the arena.
-
-		pools[log].Put(chunk)
-	}
+	a.Next = xunsafe.AddrOf(p)
+	a.End = a.Next.Add(n)
+	a.Cap = n
+	a.Log("grow", "%v:%v:%d\n", a.Next, a.End, a.Cap)
 }
 
-func nextPow2(n uintptr) uintptr {
-	return uintptr(1) << bits.Len(uint(n))
-}
-
-func setChunkEnd(chunk unsafe.Pointer, words uintptr, a *Arena) {
-	end := unsafe.Add(chunk, words*unsafe.Sizeof(uintptr(0)))
-
-	*(**Arena)(end) = a
+func (a *Arena) Log(op, format string, args ...any) {
+	debug.Log([]any{"%p %v:%v", a, a.Next, a.End}, op, format, args...)
 }

@@ -3,11 +3,6 @@
 package arena_test
 
 import (
-	"encoding/binary"
-	"fmt"
-	"math"
-	"math/bits"
-	"reflect"
 	"testing"
 	"unsafe"
 
@@ -16,495 +11,348 @@ import (
 	"github.com/flier/goutil/pkg/arena"
 )
 
-func BenchmarkArena(b *testing.B) {
-	bench[int](b)
-	bench[[2]int](b)
-	bench[[64]int](b)
-	bench[[1024]int](b)
-}
+func TestArena_New(t *testing.T) {
+	Convey("Given an arena", t, func() {
+		a := &arena.Arena{}
 
-const runs = 100000
+		Convey("When creating a new value", func() {
+			value := 42
+			ptr := arena.New(a, value)
 
-var sink any
-
-func bench[T any](b *testing.B) {
-	var z T
-	n := int64(runs * unsafe.Sizeof(z))
-	name := fmt.Sprintf("%v", reflect.TypeFor[T]())
-
-	b.Run(name, func(b *testing.B) {
-		b.Run("arena.alloc", func(b *testing.B) {
-			b.SetBytes(n)
-			for n := 0; n < b.N; n++ {
-				a := new(arena.Arena)
-				for i := 0; i < runs; i++ {
-					sink = arena.Alloc[T](a)
-				}
-			}
-		})
-
-		b.Run("arena.new", func(b *testing.B) {
-			var v T
-
-			b.SetBytes(n)
-			for n := 0; n < b.N; n++ {
-				a := new(arena.Arena)
-				for i := 0; i < runs; i++ {
-					sink = arena.New(a, v)
-				}
-			}
-		})
-
-		b.Run("new", func(b *testing.B) {
-			b.SetBytes(n)
-			for n := 0; n < b.N; n++ {
-				for i := 0; i < runs; i++ {
-					sink = new(T)
-				}
-			}
-		})
-	})
-}
-
-func TestArena(t *testing.T) {
-	Convey("Given an Arena", t, func() {
-		a := new(arena.Arena)
-
-		type testStruct struct {
-			X int
-			Y float64
-		}
-
-		Convey("When allocate a value", func() {
-			p := arena.New(a, testStruct{X: 42, Y: 3.14})
-			So(p, ShouldNotBeNil)
-
-			Convey("Then the value should be set", func() {
-				So(p.X, ShouldEqual, 42)
-				So(p.Y, ShouldEqual, 3.14)
-			})
-
-			Convey("Then the pointer should be aligned", func() {
-				So(uintptr(unsafe.Pointer(p))%8, ShouldEqual, uintptr(0))
-			})
-		})
-
-		Convey("When allocate multiple values", func() {
-			var ptrs []*testStruct
-			for i := 0; i < 10; i++ {
-				p := arena.New(a, testStruct{X: i, Y: float64(i)})
-				ptrs = append(ptrs, p)
-			}
-
-			Convey("Then the value should be set", func() {
-				for i, p := range ptrs {
-					So(p.X, ShouldEqual, i)
-					So(p.Y, ShouldEqual, float64(i))
-				}
-			})
-
-			Convey("Then reset the arena and check state", func() {
-				a.Reset()
-
-				So(a.Empty(), ShouldBeTrue)
-			})
-		})
-
-		Convey("When allocate a large memory", func() {
-			p := arena.New(a, [1024]byte{})
-
-			So(p, ShouldNotBeNil)
-		})
-
-		Convey("When allocate multiple types", func() {
-			i := arena.New(a, 123)
-			So(*i, ShouldEqual, 123)
-
-			f := arena.New(a, 3.14)
-			So(*f, ShouldEqual, 3.14)
-
-			s := arena.New(a, "hello")
-			So(*s, ShouldEqual, "hello")
-		})
-
-		i := arena.New(a, 42)
-		So(i, ShouldNotBeNil)
-		So(*i, ShouldEqual, 42)
-
-		Convey("When realloc same type", func() {
-			i = arena.Realloc[int](a, i)
-
-			Convey("Then the value should be same", func() {
-				So(i, ShouldNotBeNil)
-				So(*i, ShouldEqual, 42)
-			})
-		})
-
-		Convey("When realloc a different type", func() {
-			r := arena.Realloc[float64](a, i)
-
-			Convey("Then the bytes should be copied", func() {
-				So(r, ShouldNotBeNil)
-				So(*r, ShouldEqual, math.Float64frombits(42))
-			})
-		})
-
-		Convey("When realloc struct to array", func() {
-			s := arena.New(a, testStruct{X: 42, Y: 3.14})
-			So(s, ShouldNotBeNil)
-
-			p := arena.Realloc[[64]byte](a, s)
-			So(p, ShouldNotBeNil)
-			So(binary.NativeEndian.Uint64((*p)[:]), ShouldEqual, 42)
-			So(math.Float64frombits(binary.NativeEndian.Uint64((*p)[8:])), ShouldEqual, 3.14)
-			So((*p)[16:], ShouldResemble, make([]byte, 48))
-		})
-
-		Convey("When realloc a little more memory", func() {
-			p := arena.Realloc[[2]int](a, i)
-
-			Convey("Then the value should be copied", func() {
-				So(p, ShouldNotBeNil)
-				So(p[0], ShouldEqual, 42)
-				So(p[1], ShouldEqual, 0)
-			})
-		})
-
-		Convey("When realloc a very large memory", func() {
-			p := arena.Realloc[[1024]byte](a, i)
-
-			Convey("Then the value should be copied", func() {
-				So(p, ShouldNotBeNil)
-				So(binary.NativeEndian.Uint64((*p)[:]), ShouldEqual, 42)
-			})
-		})
-	})
-}
-
-func TestArenaAlloc(t *testing.T) {
-	Convey("Arena.Alloc", t, func() {
-		Convey("Should allocate memory with proper alignment", func() {
-			a := new(arena.Arena)
-
-			// Test different types and their alignment requirements
-			testCases := []struct {
-				name     string
-				size     uintptr
-				align    uintptr
-				expected uintptr
-			}{
-				{"uint8", unsafe.Sizeof(uint8(0)), unsafe.Alignof(uint8(0)), 8},
-				{"uint16", unsafe.Sizeof(uint16(0)), unsafe.Alignof(uint16(0)), 8},
-				{"uint32", unsafe.Sizeof(uint32(0)), unsafe.Alignof(uint32(0)), 8},
-				{"uint64", unsafe.Sizeof(uint64(0)), unsafe.Alignof(uint64(0)), 8},
-				{"uintptr", unsafe.Sizeof(uintptr(0)), unsafe.Alignof(uintptr(0)), 8},
-			}
-
-			for _, tc := range testCases {
-				Convey(fmt.Sprintf("For %s", tc.name), func() {
-					ptr := a.Alloc(tc.size, tc.align)
-					So(ptr, ShouldNotBeNil)
-					So(uintptr(ptr)%tc.expected, ShouldEqual, uintptr(0))
-				})
-			}
-		})
-
-		Convey("Should handle size rounding correctly", func() {
-			a := new(arena.Arena)
-
-			// Test that sizes are properly rounded up to alignment boundaries
-			ptr1 := a.Alloc(1, 8)
-			ptr2 := a.Alloc(1, 8)
-
-			// The second allocation should be 8 bytes after the first
-			So(uintptr(ptr2)-uintptr(ptr1), ShouldEqual, uintptr(8))
-		})
-
-		Convey("Should grow arena when needed", func() {
-			a := new(arena.Arena)
-
-			// Allocate a large chunk that will require arena growth
-			largeSize := uintptr(1024 * 1024) // 1MB
-			ptr := a.Alloc(largeSize, 8)
 			So(ptr, ShouldNotBeNil)
-
-			// Verify that the arena has grown by checking it's not empty
-			So(a.Empty(), ShouldBeFalse)
+			So(*ptr, ShouldEqual, 42)
 		})
 
-		Convey("Should handle zero size allocation", func() {
-			a := new(arena.Arena)
+		Convey("When creating multiple values", func() {
+			values := []int{1, 2, 3, 4, 5}
+			ptrs := make([]*int, len(values))
 
-			ptr := a.Alloc(0, 8)
-			So(ptr, ShouldNotBeNil)
+			for i, v := range values {
+				ptrs[i] = arena.New(a, v)
+			}
+
+			So(len(ptrs), ShouldEqual, 5)
+			for i, ptr := range ptrs {
+				So(ptr, ShouldNotBeNil)
+				So(*ptr, ShouldEqual, values[i])
+			}
 		})
 
-		Convey("Should handle very large alignment", func() {
-			a := new(arena.Arena)
+		Convey("When creating string values", func() {
+			str := "hello world"
+			ptr := arena.New(a, str)
 
-			// Test with alignment larger than maxAlign (8)
-			ptr := a.Alloc(16, 16)
 			So(ptr, ShouldNotBeNil)
-			// Note: The actual alignment might be limited by maxAlign
+			So(*ptr, ShouldEqual, "hello world")
+		})
+
+		Convey("When creating struct values", func() {
+			type testStruct struct {
+				ID   int
+				Name string
+				Data []byte
+			}
+
+			ts := testStruct{
+				ID:   123,
+				Name: "test",
+				Data: []byte("data"),
+			}
+
+			ptr := arena.New(a, ts)
+
+			So(ptr, ShouldNotBeNil)
+			So(ptr.ID, ShouldEqual, 123)
+			So(ptr.Name, ShouldEqual, "test")
+			So(ptr.Data, ShouldResemble, []byte("data"))
 		})
 	})
 }
 
-func TestArenaRealloc(t *testing.T) {
-	Convey("Arena.Realloc", t, func() {
-		Convey("Should return same pointer when new size is smaller", func() {
-			a := new(arena.Arena)
+func TestArena_Alloc(t *testing.T) {
+	Convey("Given an arena", t, func() {
+		a := &arena.Arena{}
 
-			// Allocate initial memory
-			ptr := a.Alloc(16, 8)
-			originalPtr := ptr
-
-			// Realloc with smaller size
-			newPtr := a.Realloc(ptr, 16, 8, 8)
-			So(newPtr, ShouldEqual, originalPtr)
-		})
-
-		Convey("Should return same pointer when new size is equal", func() {
-			a := new(arena.Arena)
-
-			ptr := a.Alloc(16, 8)
-			originalPtr := ptr
-
-			newPtr := a.Realloc(ptr, 16, 16, 8)
-			So(newPtr, ShouldEqual, originalPtr)
-		})
-
-		Convey("Should grow in-place when possible", func() {
-			a := new(arena.Arena)
-
-			// Allocate memory
-			ptr := a.Alloc(16, 8)
-			originalPtr := ptr
-
-			// Try to grow in-place (should succeed if there's enough space)
-			newPtr := a.Realloc(ptr, 16, 32, 8)
-
-			// In-place growth succeeded
-			So(newPtr, ShouldEqual, originalPtr)
-		})
-
-		Convey("Should copy data when reallocating to new location", func() {
-			a := new(arena.Arena)
-
-			// Allocate and initialize memory
-			ptr := a.Alloc(8, 8)
-			*(*int)(ptr) = 42
-
-			// Realloc to larger size
-			newPtr := a.Realloc(ptr, 8, 128, 8)
-			So(newPtr, ShouldNotBeNil)
-			So(newPtr, ShouldNotEqual, ptr)
-
-			// Verify data was copied
-			So(*(*int)(newPtr), ShouldEqual, 42)
-		})
-
-		Convey("Should handle reallocation between different types", func() {
-			a := new(arena.Arena)
-
-			// Allocate int
-			intPtr := arena.New(a, 42)
-			So(intPtr, ShouldNotBeNil)
-
-			// Realloc to float64
-			floatPtr := arena.Realloc[float64](a, intPtr)
-			So(floatPtr, ShouldNotBeNil)
-
-			// Verify the bit pattern is preserved
-			So(*floatPtr, ShouldEqual, math.Float64frombits(42))
-		})
-
-		Convey("Should handle reallocation to much larger size", func() {
-			a := new(arena.Arena)
-
-			// Allocate small int
-			intPtr := arena.New(a, 42)
-			So(intPtr, ShouldNotBeNil)
-
-			// Realloc to large array
-			arrayPtr := arena.Realloc[[1024]byte](a, intPtr)
-			So(arrayPtr, ShouldNotBeNil)
-
-			// Verify first 8 bytes contain the original value
-			So(binary.NativeEndian.Uint64((*arrayPtr)[:]), ShouldEqual, 42)
-		})
-	})
-}
-
-func TestArenaEdgeCases(t *testing.T) {
-	Convey("Arena Edge Cases", t, func() {
-		Convey("Should handle empty arena state", func() {
-			a := new(arena.Arena)
-
-			So(a.Empty(), ShouldBeTrue)
-		})
-
-		Convey("Should handle reset after allocations", func() {
-			a := new(arena.Arena)
-
-			// Make some allocations
-			ptr1 := a.Alloc(16, 8)
-			ptr2 := a.Alloc(32, 8)
+		Convey("When allocating small amounts of memory", func() {
+			ptr1 := a.Alloc(8)
 			So(ptr1, ShouldNotBeNil)
+
+			ptr2 := a.Alloc(16)
 			So(ptr2, ShouldNotBeNil)
+			So(uintptr(unsafe.Pointer(ptr2)), ShouldNotEqual, uintptr(unsafe.Pointer(ptr1)))
 
-			// Reset arena
-			a.Reset()
-
-			So(a.Empty(), ShouldBeTrue)
+			// Verify alignment
+			So(uintptr(unsafe.Pointer(ptr1))%uintptr(arena.Align), ShouldEqual, uintptr(0))
+			So(uintptr(unsafe.Pointer(ptr2))%uintptr(arena.Align), ShouldEqual, uintptr(0))
 		})
 
-		Convey("Should handle multiple reset cycles", func() {
-			a := new(arena.Arena)
+		Convey("When allocating large amounts of memory", func() {
+			largeSize := 1024 * 1024 // 1MB
+			ptr := a.Alloc(largeSize)
 
+			So(ptr, ShouldNotBeNil)
+			So(uintptr(unsafe.Pointer(ptr))%uintptr(arena.Align), ShouldEqual, uintptr(0))
+		})
+
+		Convey("When allocating zero bytes", func() {
+			ptr := a.Alloc(0)
+			// Zero byte allocation might return nil or a valid pointer
+			if ptr != nil {
+				So(uintptr(unsafe.Pointer(ptr))%uintptr(arena.Align), ShouldEqual, uintptr(0))
+			}
+		})
+
+		Convey("When allocating with alignment requirements", func() {
+			// Test that allocations are properly aligned
+			for i := 0; i < 10; i++ {
+				size := 8 + i*8
+				ptr := a.Alloc(size)
+				So(uintptr(unsafe.Pointer(ptr))%uintptr(arena.Align), ShouldEqual, uintptr(0))
+			}
+		})
+	})
+}
+
+func TestArena_Reserve(t *testing.T) {
+	Convey("Given an arena", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When reserving memory", func() {
+			// Reserve a large amount
+			a.Reserve(1024 * 1024) // 1MB
+
+			// Should be able to allocate without growing
+			ptr := a.Alloc(1024)
+			So(ptr, ShouldNotBeNil)
+		})
+
+		Convey("When reserving multiple times", func() {
+			a.Reserve(1000)
+			a.Reserve(2000)
+			a.Reserve(500)
+
+			// Should be able to allocate the total reserved amount
+			ptr := a.Alloc(3500)
+			So(ptr, ShouldNotBeNil)
+		})
+	})
+}
+
+func TestArena_Grow(t *testing.T) {
+	Convey("Given an arena", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When growing automatically", func() {
+			// Allocate more than the initial capacity
+			largeSize := 1024 * 1024 // 1MB
+			ptr := a.Alloc(largeSize)
+
+			So(ptr, ShouldNotBeNil)
+			So(a.Cap, ShouldBeGreaterThanOrEqualTo, largeSize)
+		})
+
+		Convey("When growing multiple times", func() {
+			initialCap := a.Cap
+
+			// Force multiple grows
 			for i := 0; i < 5; i++ {
-				// Make allocations
-				ptr := a.Alloc(16, 8)
-				So(ptr, ShouldNotBeNil)
-
-				// Reset
-				a.Reset()
-
-				So(a.Empty(), ShouldBeTrue)
-			}
-		})
-
-		Convey("Should handle very small allocations", func() {
-			a := new(arena.Arena)
-
-			// Allocate very small amounts
-			for i := 0; i < 100; i++ {
-				ptr := a.Alloc(1, 1)
+				size := 1024 * (i + 1)
+				ptr := a.Alloc(size)
 				So(ptr, ShouldNotBeNil)
 			}
+
+			So(a.Cap, ShouldBeGreaterThan, initialCap)
+		})
+	})
+}
+
+func TestArena_Free(t *testing.T) {
+	Convey("Given an arena with allocated memory", t, func() {
+		a := &arena.Arena{}
+
+		// Allocate some memory
+		ptr1 := a.Alloc(1000)
+		ptr2 := a.Alloc(2000)
+		So(ptr1, ShouldNotBeNil)
+		So(ptr2, ShouldNotBeNil)
+
+		Convey("When freeing the arena", func() {
+			a.Free()
+
+			So(a.Cap, ShouldBeGreaterThan, 0)
+			So(a.Next, ShouldNotBeNil)
+			So(a.End, ShouldNotBeNil)
 		})
 
-		Convey("Should handle mixed allocation sizes", func() {
-			a := new(arena.Arena)
+		Convey("When reusing after free", func() {
+			a.Free()
 
-			// Mix different allocation sizes
-			sizes := []uintptr{1, 8, 16, 64, 256, 1024}
-			var ptrs []unsafe.Pointer
+			// Should be able to allocate again
+			ptr3 := a.Alloc(500)
+			So(ptr3, ShouldNotBeNil)
+		})
+	})
+}
+
+func TestArena_KeepAlive(t *testing.T) {
+	Convey("Given an arena", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When keeping values alive", func() {
+			value := "keep me alive"
+			// This should not panic
+			So(func() {
+				a.KeepAlive(value)
+			}, ShouldNotPanic)
+		})
+
+		Convey("When keeping multiple values alive", func() {
+			values := []string{"value1", "value2", "value3"}
+
+			// This should not panic
+			So(func() {
+				for _, v := range values {
+					a.KeepAlive(v)
+				}
+			}, ShouldNotPanic)
+		})
+	})
+}
+
+func TestArena_Log(t *testing.T) {
+	Convey("Given an arena", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When logging operations", func() {
+			// This should not panic
+			So(func() {
+				a.Log("test", "test message")
+			}, ShouldNotPanic)
+		})
+	})
+}
+
+func TestArena_EdgeCases(t *testing.T) {
+	Convey("Given edge cases", t, func() {
+		Convey("When using zero arena", func() {
+			var a arena.Arena
+
+			// Should be able to allocate
+			ptr := a.Alloc(8)
+			So(ptr, ShouldNotBeNil)
+		})
+
+		Convey("When allocating very large amounts", func() {
+			a := &arena.Arena{}
+
+			// Test with a reasonable large size
+			largeSize := 10 * 1024 * 1024 // 10MB
+			ptr := a.Alloc(largeSize)
+
+			So(ptr, ShouldNotBeNil)
+			So(a.Cap, ShouldBeGreaterThanOrEqualTo, largeSize)
+		})
+
+		Convey("When allocating with odd sizes", func() {
+			a := &arena.Arena{}
+
+			// Test various odd sizes
+			sizes := []int{1, 3, 7, 15, 31, 63, 127, 255, 511, 1023}
 
 			for _, size := range sizes {
-				ptr := a.Alloc(size, 8)
+				ptr := a.Alloc(size)
 				So(ptr, ShouldNotBeNil)
-				ptrs = append(ptrs, ptr)
-			}
-
-			// Verify all pointers are unique
-			for i := 0; i < len(ptrs); i++ {
-				for j := i + 1; j < len(ptrs); j++ {
-					So(ptrs[i], ShouldNotEqual, ptrs[j])
-				}
+				So(uintptr(unsafe.Pointer(ptr))%uintptr(arena.Align), ShouldEqual, uintptr(0))
 			}
 		})
 	})
 }
 
-func TestArenaMemoryManagement(t *testing.T) {
-	Convey("Arena Memory Management", t, func() {
-		Convey("Should reuse memory chunks efficiently", func() {
-			a := new(arena.Arena)
+func TestArena_Performance(t *testing.T) {
+	Convey("Given performance scenarios", t, func() {
+		Convey("When allocating many small objects", func() {
+			a := &arena.Arena{}
 
-			// Make allocations to trigger chunk allocation
-			for i := 0; i < 1000; i++ {
-				ptr := a.Alloc(16, 8)
-				So(ptr, ShouldNotBeNil)
-			}
-
-			// Reset and verify chunks are reused
-			a.Reset()
-
-			// Make allocations again - should reuse existing chunks
-			for i := 0; i < 1000; i++ {
-				ptr := a.Alloc(16, 8)
-				So(ptr, ShouldNotBeNil)
-			}
-		})
-
-		Convey("Should handle power-of-two chunk sizing", func() {
-			a := new(arena.Arena)
-
-			// Test that chunk sizes follow power-of-two pattern
-			expectedSizes := []uintptr{8, 16, 32, 64, 128, 256, 512, 1024}
-
-			for _, expectedSize := range expectedSizes {
-				// Allocate enough to trigger new chunk
-				ptr := a.Alloc(expectedSize, 8)
-				So(ptr, ShouldNotBeNil)
-			}
-		})
-
-		Convey("Should handle alignment requirements correctly", func() {
-			a := new(arena.Arena)
-
-			// Test various alignment requirements
-			alignments := []uintptr{1, 2, 4, 8}
-			sizes := []uintptr{1, 2, 4, 8, 16, 32}
-
-			for _, align := range alignments {
-				for _, size := range sizes {
-					ptr := a.Alloc(size, align)
+			So(func() {
+				for i := 0; i < 10000; i++ {
+					ptr := a.Alloc(8)
 					So(ptr, ShouldNotBeNil)
-
-					// Verify alignment (actual alignment might be limited by maxAlign)
-					actualAlign := uintptr(1) << bits.TrailingZeros(uint(uintptr(ptr)))
-					So(actualAlign, ShouldBeGreaterThanOrEqualTo, align)
 				}
-			}
+			}, ShouldNotPanic)
+		})
+
+		Convey("When allocating mixed sizes", func() {
+			a := &arena.Arena{}
+
+			So(func() {
+				for i := 0; i < 1000; i++ {
+					size := 8 + (i%100)*8
+					ptr := a.Alloc(size)
+					So(ptr, ShouldNotBeNil)
+				}
+			}, ShouldNotPanic)
+		})
+
+		Convey("When freeing and reusing", func() {
+			a := &arena.Arena{}
+
+			So(func() {
+				for i := 0; i < 10; i++ {
+					// Allocate some memory
+					for j := 0; j < 100; j++ {
+						ptr := a.Alloc(8)
+						So(ptr, ShouldNotBeNil)
+					}
+
+					// Free and reuse
+					a.Free()
+				}
+			}, ShouldNotPanic)
 		})
 	})
 }
 
-func TestArenaConcurrency(t *testing.T) {
-	t.Run("Should handle sequential operations safely", func(t *testing.T) {
-		a := new(arena.Arena)
-		const numAllocations = 1000
+func TestSuggestSize(t *testing.T) {
+	Convey("Given size suggestions", t, func() {
+		Convey("When suggesting sizes", func() {
+			// Test that sizes are rounded up to powers of 2
+			So(arena.SuggestSize(0), ShouldEqual, 0)
+			So(arena.SuggestSize(1), ShouldEqual, 64)
+			So(arena.SuggestSize(63), ShouldEqual, 64)
+			So(arena.SuggestSize(64), ShouldEqual, 64)
+			So(arena.SuggestSize(65), ShouldEqual, 128)
+			So(arena.SuggestSize(127), ShouldEqual, 128)
+			So(arena.SuggestSize(128), ShouldEqual, 128)
+		})
 
-		// Make many allocations sequentially
-		for i := 0; i < numAllocations; i++ {
-			ptr := a.Alloc(16, 8)
-			if ptr == nil {
-				t.Errorf("Allocation %d failed", i)
-			}
-		}
-
-		// Verify arena is not empty
-		if a.Empty() {
-			t.Error("Arena should not be empty after many allocations")
-		}
-
-		// Reset and verify
-		a.Reset()
-		if !a.Empty() {
-			t.Error("Arena should be empty after reset")
-		}
+		Convey("When suggesting large sizes", func() {
+			So(arena.SuggestSize(1024), ShouldEqual, 1024)
+			So(arena.SuggestSize(1025), ShouldEqual, 2048)
+			So(arena.SuggestSize(2047), ShouldEqual, 2048)
+			So(arena.SuggestSize(1024*1024), ShouldEqual, 1024*1024)
+		})
 	})
+}
 
-	t.Run("Should handle rapid reset cycles", func(t *testing.T) {
-		a := new(arena.Arena)
+func TestAllocTraceable(t *testing.T) {
+	Convey("Given traceable allocations", t, func() {
+		Convey("When allocating traceable memory", func() {
+			a := &arena.Arena{}
+			ptr := arena.AllocTraceable(100, unsafe.Pointer(a))
 
-		// Make allocations and reset rapidly
-		for i := 0; i < 100; i++ {
-			// Make some allocations
-			for j := 0; j < 10; j++ {
-				ptr := a.Alloc(16, 8)
-				if ptr == nil {
-					t.Errorf("Allocation %d in cycle %d failed", j, i)
-				}
+			So(ptr, ShouldNotBeNil)
+			So(uintptr(unsafe.Pointer(ptr))%uintptr(arena.Align), ShouldEqual, uintptr(0))
+		})
+
+		Convey("When allocating different sizes", func() {
+			a := &arena.Arena{}
+			sizes := []int{8, 16, 32, 64, 128, 256, 512, 1024}
+
+			for _, size := range sizes {
+				ptr := arena.AllocTraceable(size, unsafe.Pointer(a))
+				So(ptr, ShouldNotBeNil)
+				So(uintptr(unsafe.Pointer(ptr))%uintptr(arena.Align), ShouldEqual, uintptr(0))
 			}
-
-			// Reset
-			a.Reset()
-			if !a.Empty() {
-				t.Errorf("Reset failed in cycle %d", i)
-			}
-		}
+		})
 	})
 }

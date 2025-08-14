@@ -14,7 +14,7 @@
 
 ### arena [![Go Reference](https://pkg.go.dev/badge/github.com/flier/goutil)](https://pkg.go.dev/github.com/flier/goutil/pkg/arena)
 
-Package `arena` provides a simple memory arena allocator for Go, inspired by the article [Cheating the Reaper in Go](https://mcyoung.xyz/2025/04/21/go-arenas/).
+Package `arena` provides a low-level, relatively unsafe arena allocation abstraction, inspired by the article [Cheating the Reaper in Go](https://mcyoung.xyz/2025/04/21/go-arenas/).
 
 ### either [![Go Reference](https://pkg.go.dev/badge/github.com/flier/goutil)](https://pkg.go.dev/github.com/flier/goutil/pkg/either)
 
