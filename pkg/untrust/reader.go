@@ -32,14 +32,14 @@ func (r *Reader) Peek(b byte) bool { return len(r.b) > r.i && r.b[r.i] == b }
 
 // Reads the next input byte.
 func (r *Reader) ReadByte() (byte, error) {
-	if len(r.b) > r.i {
-		b := r.b[r.i]
-		r.i++
-
-		return b, nil
+	if len(r.b) <= r.i {
+		return 0, ErrEndOfInput
 	}
 
-	return 0, ErrEndOfInput
+	b := r.b[r.i]
+	r.i++
+
+	return b, nil
 }
 
 // Skips n bytes of the input, returning the skipped input as an Input.
@@ -51,6 +51,8 @@ func (r *Reader) ReadBytes(n int) (Input, error) {
 	i := r.i + n
 
 	if len(r.b) < i {
+		r.i = len(r.b)
+
 		return nil, ErrEndOfInput
 	}
 
