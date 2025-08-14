@@ -12,8 +12,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/flier/goutil/pkg/xflag"
 	"github.com/timandy/routine"
+
+	"github.com/flier/goutil/internal/xflag"
 )
 
 // Enabled is true if the compiler is being built with the debug tag, which

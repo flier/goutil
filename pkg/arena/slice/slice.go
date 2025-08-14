@@ -74,6 +74,10 @@ func (s Slice[_]) Cap() int {
 	return int(s.cap)
 }
 
+func (s Slice[T]) Get(n int) *T {
+	return xunsafe.Add(s.Ptr(), n)
+}
+
 // Load loads a value at the given index.
 func (s Slice[T]) Load(n int) T {
 	if debug.Enabled {

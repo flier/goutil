@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        golang: ["stable", "oldstable", ""]
+        golang: ["stable", "oldstable", "1.23"]
     steps:
       - uses: actions/checkout@v4
 

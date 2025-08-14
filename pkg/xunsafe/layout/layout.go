@@ -1,3 +1,5 @@
+//go:build go1.21
+
 // Package layout includes helpers for working with type layouts.
 //
 // It is separate from xunsafe, because nothing in this package is actually

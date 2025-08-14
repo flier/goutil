@@ -1,3 +1,5 @@
+//go:build go1.23
+
 package xunsafe
 
 // PC is a raw function pointer, which can be used to store captureless

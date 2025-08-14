@@ -1,3 +1,5 @@
+//go:build go1.23
+
 // Package unsafe provides a more convenient interface for performing unsafe
 // operations than Go's built-in package unsafe.
 package xunsafe

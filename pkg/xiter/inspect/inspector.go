@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 )
 
 type Inspector struct {
 	strings.Builder
 	options
-	dump  func() func(any) string
-	dump2 func() func(any, any) string
+	dump  func(any) string
+	dump2 func(any, any) string
 	i, w  int
 }
 
@@ -22,41 +21,35 @@ func New(x []Option) *Inspector {
 		opt(&o)
 	}
 
-	d := sync.OnceValue(func() (d func(any) string) {
-		d = o.dump
-		if d != nil {
-			return
+	d := o.dump
+	if d == nil {
+		f := o.format
+		if f == "" {
+			if o.pretty {
+				f = "%#v"
+			} else {
+				f = "%v"
+			}
 		}
 
-		f := "%v"
-		if o.format != "" {
-			f = o.format
-		} else if o.pretty {
-			f = "%#v"
+		d = func(v any) string {
+			return fmt.Sprintf(f, v)
+		}
+	}
+
+	d2 := o.dump2
+	if d2 == nil {
+		f := o.format
+		if f == "" {
+			if o.pretty {
+				f = "%#v:%#v"
+			} else {
+				f = "%v:%v"
+			}
 		}
 
-		d = func(v any) string { return fmt.Sprintf(f, v) }
-
-		return
-	})
-
-	d2 := sync.OnceValue(func() (d func(any, any) string) {
-		d = o.dump2
-		if d != nil {
-			return
-		}
-
-		f := "%v:%v"
-		if o.format != "" {
-			f = o.format
-		} else if o.pretty {
-			f = "%#v:%#v"
-		}
-
-		d = func(k, v any) string { return fmt.Sprintf(f, k, v) }
-
-		return
-	})
+		d2 = func(k, v any) string { return fmt.Sprintf(f, k, v) }
+	}
 
 	return &Inspector{options: o, dump: d, dump2: d2}
 }
@@ -84,17 +77,13 @@ func (i *Inspector) Stop() {
 
 func (i *Inspector) Inspect(v any) {
 	i.inspect(func() string {
-		d := i.dump()
-
-		return d(v)
+		return i.dump(v)
 	})
 }
 
 func (i *Inspector) Inspect2(k, v any) {
 	i.inspect(func() string {
-		d := i.dump2()
-
-		return d(k, v)
+		return i.dump2(k, v)
 	})
 }
 
