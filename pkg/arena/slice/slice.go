@@ -6,6 +6,7 @@ import (
 
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
+	"github.com/flier/goutil/pkg/opt"
 	"github.com/flier/goutil/pkg/xunsafe"
 	"github.com/flier/goutil/pkg/xunsafe/layout"
 )
@@ -17,6 +18,16 @@ import (
 type Slice[T any] struct {
 	ptr      *T
 	len, cap uint32
+}
+
+// FromBytes allocates a slice for the given bytes.
+func FromBytes(a *arena.Arena, b []byte) Slice[byte] {
+	return Of(a, b...)
+}
+
+// FromString allocates a slice for the given string.
+func FromString(a *arena.Arena, s string) Slice[byte] {
+	return Of(a, []byte(s)...)
 }
 
 // FromParts assembles a slice from its raw components.
@@ -48,15 +59,37 @@ func Make[T any](a *arena.Arena, n int) Slice[T] {
 	return s
 }
 
-// Ptr returns this slice's pointer value.
-func (s Slice[T]) Ptr() *T {
-	return xunsafe.Cast[T](s.ptr)
+// Equal returns true if a and b are equal.
+func Equal[T comparable](a, b Slice[T]) bool {
+	if a.Ptr() == nil && b.Ptr() == nil {
+		return true
+	}
+
+	if a.Ptr() == nil || b.Ptr() == nil {
+		return false
+	}
+
+	if a.Len() != b.Len() {
+		return false
+	}
+
+	for i := 0; i < a.Len(); i++ {
+		if a.Load(i) != b.Load(i) {
+			return false
+		}
+	}
+
+	return true
 }
 
+// Ptr returns this slice's pointer value.
+func (s Slice[T]) Ptr() *T { return xunsafe.Cast[T](s.ptr) }
+
+// Empty returns true if this slice is empty.
+func (s Slice[_]) Empty() bool { return s.len == 0 }
+
 // Len returns this slice's length.
-func (s Slice[_]) Len() int {
-	return int(s.len)
-}
+func (s Slice[_]) Len() int { return int(s.len) }
 
 // SetLen directly sets the length of s.
 func (s Slice[T]) SetLen(n int) Slice[T] {
@@ -70,27 +103,54 @@ func (s Slice[T]) SetLen(n int) Slice[T] {
 }
 
 // Cap returns this slice's capacity.
-func (s Slice[_]) Cap() int {
-	return int(s.cap)
+func (s Slice[_]) Cap() int { return int(s.cap) }
+
+// Get returns the pointer to the given index.
+func (s Slice[T]) Get(n int) *T {
+	if debug.Enabled {
+		return &s.Raw()[n]
+	}
+
+	return s.unsafeGet(n)
 }
 
-func (s Slice[T]) Get(n int) *T {
-	return xunsafe.Add(s.Ptr(), n)
+// CheckedGet returns the pointer to the given index, returning None if the index is out of bounds.
+func (s Slice[T]) CheckedGet(n int) opt.Option[*T] {
+	if n < 0 || n >= s.Len() {
+		return opt.None[*T]()
+	}
+
+	return opt.Some(s.unsafeGet(n))
 }
+
+func (s Slice[T]) unsafeGet(n int) *T { return xunsafe.Add(s.Ptr(), n) }
 
 // Load loads a value at the given index.
 func (s Slice[T]) Load(n int) T {
 	if debug.Enabled {
 		return s.Raw()[n]
 	}
-	return xunsafe.Load(s.Ptr(), n)
+
+	return s.unsafeLoad(n)
 }
+
+// CheckedLoad loads a value at the given index, returning None if the index is out of bounds.
+func (s Slice[T]) CheckedLoad(n int) opt.Option[T] {
+	if n < 0 || n >= s.Len() {
+		return opt.None[T]()
+	}
+
+	return opt.Some(s.unsafeLoad(n))
+}
+
+func (s Slice[T]) unsafeLoad(n int) T { return xunsafe.Load(s.Ptr(), n) }
 
 // Store stores a value at the given index.
 func (s Slice[T]) Store(n int, v T) {
 	if debug.Enabled {
 		s.Raw()[n] = v
 	}
+
 	xunsafe.Store(s.Ptr(), n, v)
 }
 
@@ -106,6 +166,69 @@ func (s Slice[T]) Raw() []T {
 // The return value of this function must never escape outside of this module.
 func (s Slice[T]) Rest() []T {
 	return unsafe.Slice(xunsafe.Add(s.Ptr(), s.len), s.cap-s.len)
+}
+
+// Slice returns a slice of s between the given start and end indices.
+//
+// Parameters:
+//
+//	start:
+//		Zero-based index at which to start extraction.
+//
+//		Negative index counts back from the end of the slice — if -slice.len <= start < 0, start + slice.len is used.
+//		If start < -slice.len or start is omitted, 0 is used.
+//		If start >= slice.len, an empty slice is returned.
+//
+//	end:
+//		Zero-based index at which to end extraction. slice() extracts up to but not including end.
+//
+//		Negative index counts back from the end of the slice — if -slice.len <= end < 0, end + slice.len is used.
+//		If end < -slice.len, 0 is used.
+//		If end >= slice.len or end is omitted or undefined, slice.len is used, causing all elements until the end to be extracted.
+//		If end implies a position before or at the position that start implies, an empty slice is returned.
+func (s Slice[T]) Slice(start, end int) Slice[T] {
+	// Early return for empty slice
+	if s.len == 0 {
+		return Slice[T]{}
+	}
+
+	if start < 0 {
+		if start >= -int(s.len) {
+			start += int(s.len)
+		} else {
+			start = 0
+		}
+	} else if start >= int(s.len) {
+		return Slice[T]{}
+	}
+
+	if end < 0 {
+		if end >= -int(s.len) {
+			end += int(s.len)
+		} else {
+			end = 0
+		}
+	} else if end >= int(s.len) {
+		end = int(s.len)
+	}
+
+	// Return empty slice if indices are invalid
+	if start >= end {
+		return Slice[T]{}
+	}
+
+	// Calculate new capacity more accurately
+	cap := s.cap - uint32(start)
+	// Ensure capacity doesn't go below the new length
+	if cap < uint32(end-start) {
+		cap = uint32(end - start)
+	}
+
+	return Slice[T]{
+		ptr: xunsafe.Add(s.ptr, start),
+		len: uint32(end - start),
+		cap: cap,
+	}
 }
 
 // Append appends the given elements to a slice, reallocating on the given

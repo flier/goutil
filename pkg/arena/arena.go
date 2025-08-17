@@ -89,8 +89,6 @@ func (a *Arena) KeepAlive(v any) {
 // Alloc allocates memory with the given size.
 //
 // All memory is pointer-aligned. If zero is true, the memory will be zeroed.
-//
-//go:nosplit
 func (a *Arena) Alloc(size int) *byte {
 	// Align size to a pointer boundary.
 	size += Align - 1
