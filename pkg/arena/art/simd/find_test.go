@@ -358,266 +358,114 @@ func TestEdgeCases(t *testing.T) {
 	})
 }
 
-// Test data setup functions
-func setupBenchmarkData() (*[16]byte, int) {
-	keys := &[16]byte{0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30}
-	return keys, 16
-}
+// Test for FindNonZeroKeyIndex function
+func TestFindNonZeroKeyIndex(t *testing.T) {
+	Convey("Given FindNonZeroKeyIndex function", t, func() {
+		Convey("When searching in an array with all zeros", func() {
+			keys := &[256]byte{}
 
-// Performance comparison test using GoConvey
-func TestPerformanceComparison(t *testing.T) {
-	Convey("Given performance comparison", t, func() {
-		keys, n := setupBenchmarkData()
-		iterations := 1000000
+			result := FindNonZeroKeyIndex(keys)
 
-		Convey("When comparing FindKeyIndex performance", func() {
-			scalarTime := testing.Benchmark(func(b *testing.B) {
-				for i := 0; i < iterations; i++ {
-					_ = findKeyIndexScalar(keys, n, byte(i%32))
-				}
-			})
-
-			simdTime := testing.Benchmark(func(b *testing.B) {
-				for i := 0; i < iterations; i++ {
-					_ = FindKeyIndex(keys, n, byte(i%32))
-				}
-			})
-
-			t.Logf("=== FindKeyIndex Performance Test ===")
-			t.Logf("Scalar: %d iterations in %v (%.2f ns/op)", iterations, scalarTime.T, float64(scalarTime.T.Nanoseconds())/float64(iterations))
-			t.Logf("SIMD:   %d iterations in %v (%.2f ns/op)", iterations, simdTime.T, float64(simdTime.T.Nanoseconds())/float64(iterations))
-
-			ratio := float64(simdTime.T.Nanoseconds()) / float64(scalarTime.T.Nanoseconds())
-			if ratio > 1 {
-				t.Logf("Ratio:  SIMD is %.2fx slower than Scalar", ratio)
-			} else {
-				t.Logf("Ratio:  SIMD is %.2fx faster than Scalar", 1/ratio)
-			}
-
-			So(ratio, ShouldBeGreaterThan, 0) // Basic validation
+			So(result, ShouldEqual, -1)
 		})
 
-		Convey("When comparing FindInsertPosition performance", func() {
-			scalarTime := testing.Benchmark(func(b *testing.B) {
-				for i := 0; i < iterations; i++ {
-					_ = findInsertPositionScalar(keys, n, byte(i%32))
-				}
-			})
+		Convey("When searching in an array with first element non-zero", func() {
+			keys := &[256]byte{}
+			keys[0] = 42
 
-			simdTime := testing.Benchmark(func(b *testing.B) {
-				for i := 0; i < iterations; i++ {
-					_ = FindInsertPosition(keys, n, byte(i%32))
-				}
-			})
+			result := FindNonZeroKeyIndex(keys)
 
-			t.Logf("\n=== FindInsertPosition Performance Test ===")
-			t.Logf("Scalar: %d iterations in %v (%.2f ns/op)", iterations, scalarTime.T, float64(scalarTime.T.Nanoseconds())/float64(iterations))
-			t.Logf("SIMD:   %d iterations in %v (%.2f ns/op)", iterations, simdTime.T, float64(simdTime.T.Nanoseconds())/float64(iterations))
+			So(result, ShouldEqual, 0)
+		})
 
-			ratio := float64(simdTime.T.Nanoseconds()) / float64(scalarTime.T.Nanoseconds())
-			if ratio > 1 {
-				t.Logf("Ratio:  SIMD is %.2fx slower than Scalar", ratio)
-			} else {
-				t.Logf("Ratio:  SIMD is %.2fx faster than Scalar", 1/ratio)
-			}
+		Convey("When searching in an array with middle element non-zero", func() {
+			keys := &[256]byte{}
+			keys[128] = 42
 
-			So(ratio, ShouldBeGreaterThan, 0) // Basic validation
+			result := FindNonZeroKeyIndex(keys)
+
+			So(result, ShouldEqual, 128)
+		})
+
+		Convey("When searching in an array with last element non-zero", func() {
+			keys := &[256]byte{}
+			keys[255] = 42
+
+			result := FindNonZeroKeyIndex(keys)
+
+			So(result, ShouldEqual, 255)
+		})
+
+		Convey("When searching in an array with multiple non-zero elements", func() {
+			keys := &[256]byte{}
+			keys[10] = 42
+			keys[20] = 100
+			keys[30] = 200
+
+			result := FindNonZeroKeyIndex(keys)
+
+			So(result, ShouldEqual, 10) // Should return first non-zero
 		})
 	})
 }
 
-// Benchmark scalar implementations
-func BenchmarkFindKeyIndexScalar(b *testing.B) {
-	keys, n := setupBenchmarkData()
+// Test for FindLastNonZeroKeyIndex function
+func TestFindLastNonZeroKeyIndex(t *testing.T) {
+	Convey("Given FindLastNonZeroKeyIndex function", t, func() {
+		Convey("When searching in an array with all zeros", func() {
+			keys := &[256]byte{}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = findKeyIndexScalar(keys, n, byte(i%32))
-	}
-}
+			result := FindLastNonZeroKeyIndex(keys)
 
-func BenchmarkFindInsertPositionScalar(b *testing.B) {
-	keys, n := setupBenchmarkData()
+			So(result, ShouldEqual, -1)
+		})
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = findInsertPositionScalar(keys, n, byte(i%32))
-	}
-}
+		Convey("When searching in an array with first element non-zero", func() {
+			keys := &[256]byte{}
+			keys[0] = 42
 
-// Benchmark SIMD implementations (only on supported architectures)
-func BenchmarkFindKeyIndexSIMD(b *testing.B) {
-	keys, n := setupBenchmarkData()
+			result := FindLastNonZeroKeyIndex(keys)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, n, byte(i%32))
-	}
-}
+			So(result, ShouldEqual, 0) // Should return 0 since it's the last (and only) non-zero element
+		})
 
-func BenchmarkFindInsertPositionSIMD(b *testing.B) {
-	keys, n := setupBenchmarkData()
+		Convey("When searching in an array with middle element non-zero", func() {
+			keys := &[256]byte{}
+			keys[128] = 42
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindInsertPosition(keys, n, byte(i%32))
-	}
-}
+			result := FindLastNonZeroKeyIndex(keys)
 
-// Benchmark different key distributions
-func BenchmarkFindKeyIndex_FirstElement(b *testing.B) {
-	keys, n := setupBenchmarkData()
+			So(result, ShouldEqual, 128)
+		})
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, n, 0) // First element
-	}
-}
+		Convey("When searching in an array with last element non-zero", func() {
+			keys := &[256]byte{}
+			keys[255] = 42
 
-func BenchmarkFindKeyIndex_LastElement(b *testing.B) {
-	keys, n := setupBenchmarkData()
+			result := FindLastNonZeroKeyIndex(keys)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, n, 30) // Last element
-	}
-}
+			So(result, ShouldEqual, 255)
+		})
 
-func BenchmarkFindKeyIndex_NotFound(b *testing.B) {
-	keys, n := setupBenchmarkData()
+		Convey("When searching in an array with multiple non-zero elements", func() {
+			keys := &[256]byte{}
+			keys[10] = 42
+			keys[20] = 100
+			keys[30] = 200
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, n, 31) // Not found
-	}
-}
+			result := FindLastNonZeroKeyIndex(keys)
 
-func BenchmarkFindInsertPosition_FirstPosition(b *testing.B) {
-	keys, n := setupBenchmarkData()
+			So(result, ShouldEqual, 30) // Should return last non-zero
+		})
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindInsertPosition(keys, n, 1) // Insert at first position
-	}
-}
+		Convey("When searching in an array with non-zero elements at boundaries", func() {
+			keys := &[256]byte{}
+			keys[0] = 1
+			keys[255] = 255
 
-func BenchmarkFindInsertPosition_MiddlePosition(b *testing.B) {
-	keys, n := setupBenchmarkData()
+			result := FindLastNonZeroKeyIndex(keys)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindInsertPosition(keys, n, 15) // Insert at middle position
-	}
-}
-
-func BenchmarkFindInsertPosition_LastPosition(b *testing.B) {
-	keys, n := setupBenchmarkData()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindInsertPosition(keys, n, 31) // Insert at last position
-	}
-}
-
-// Benchmark different array sizes
-func BenchmarkFindKeyIndex_Size4(b *testing.B) {
-	keys := &[16]byte{0, 2, 4, 6}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, 4, byte(i%8))
-	}
-}
-
-func BenchmarkFindKeyIndex_Size8(b *testing.B) {
-	keys := &[16]byte{0, 2, 4, 6, 8, 10, 12, 14}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, 8, byte(i%16))
-	}
-}
-
-func BenchmarkFindKeyIndex_Size16(b *testing.B) {
-	keys, n := setupBenchmarkData()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, n, byte(i%32))
-	}
-}
-
-// Benchmark scalar vs SIMD for different sizes
-func BenchmarkFindKeyIndex_Scalar_Size4(b *testing.B) {
-	keys := &[16]byte{0, 2, 4, 6}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = findKeyIndexScalar(keys, 4, byte(i%8))
-	}
-}
-
-func BenchmarkFindKeyIndex_SIMD_Size4(b *testing.B) {
-	keys := &[16]byte{0, 2, 4, 6}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, 4, byte(i%8))
-	}
-}
-
-func BenchmarkFindKeyIndex_Scalar_Size8(b *testing.B) {
-	keys := &[16]byte{0, 2, 4, 6, 8, 10, 12, 14}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = findKeyIndexScalar(keys, 8, byte(i%16))
-	}
-}
-
-func BenchmarkFindKeyIndex_SIMD_Size8(b *testing.B) {
-	keys := &[16]byte{0, 2, 4, 6, 8, 10, 12, 14}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, 8, byte(i%16))
-	}
-}
-
-// Benchmark with realistic data patterns
-func BenchmarkFindKeyIndex_Sequential(b *testing.B) {
-	keys := &[16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, 16, byte(i%16))
-	}
-}
-
-func BenchmarkFindKeyIndex_Sparse(b *testing.B) {
-	keys := &[16]byte{0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindKeyIndex(keys, 16, byte(i%160))
-	}
-}
-
-// Benchmark with different key distributions for insert position
-func BenchmarkFindInsertPosition_Sequential(b *testing.B) {
-	keys := &[16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindInsertPosition(keys, 16, byte(i%16))
-	}
-}
-
-func BenchmarkFindInsertPosition_Sparse(b *testing.B) {
-	keys := &[16]byte{0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = FindInsertPosition(keys, 16, byte(i%160))
-	}
+			So(result, ShouldEqual, 255) // Should return last non-zero
+		})
+	})
 }

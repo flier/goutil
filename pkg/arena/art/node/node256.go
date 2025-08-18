@@ -42,9 +42,6 @@ func (n *Node256) Ref() Ref { return NewRef(TypeNode256, n) }
 //
 // Time complexity: O(1) in the best case (first child exists), O(256) in the worst case
 func (n *Node256) Minimum() *Leaf {
-	if n.NumChildren == 0 {
-		return nil
-	}
 	for i := 0; i < 256; i++ {
 		if n.Children[i] != 0 {
 			return n.Children[i].AsNode().Minimum()
@@ -62,9 +59,6 @@ func (n *Node256) Minimum() *Leaf {
 //
 // Time complexity: O(1) in the best case (last child exists), O(256) in the worst case
 func (n *Node256) Maximum() *Leaf {
-	if n.NumChildren == 0 {
-		return nil
-	}
 	for i := 255; i >= 0; i-- {
 		if n.Children[i] != 0 {
 			return n.Children[i].AsNode().Maximum()

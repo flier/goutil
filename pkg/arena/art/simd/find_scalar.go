@@ -1,6 +1,6 @@
 package simd
 
-// FindKeyIndex is a scalar fallback implementation for finding key index.
+// findKeyIndexScalar is a scalar fallback implementation for finding key index.
 //
 // This function is used by all architectures when SIMD is not available.
 func findKeyIndexScalar(keys *[16]byte, n int, key byte) int {
@@ -24,4 +24,24 @@ func findInsertPositionScalar(keys *[16]byte, n int, key byte) int {
 	}
 
 	return n
+}
+
+func findNonZeroKeyIndexScalar(keys *[256]byte) int {
+	for i := 0; i < 256; i++ {
+		if keys[i] != 0 {
+			return i
+		}
+	}
+
+	return -1
+}
+
+func findLastNonZeroKeyIndexScalar(keys *[256]byte) int {
+	for i := 255; i >= 0; i-- {
+		if keys[i] != 0 {
+			return i
+		}
+	}
+
+	return -1
 }

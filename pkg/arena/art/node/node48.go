@@ -3,6 +3,7 @@ package node
 import (
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
+	"github.com/flier/goutil/pkg/arena/art/simd"
 )
 
 // Package node implements the core node types for an adaptive radix tree.
@@ -44,11 +45,10 @@ func (n *Node48) Minimum() *Leaf {
 		return nil
 	}
 	// Find the first non-zero key in the Keys array
-	for i := 0; i < 256; i++ {
-		if idx := n.Keys[i]; idx != 0 {
-			return n.Children[idx-1].AsNode().Minimum()
-		}
+	if i := simd.FindNonZeroKeyIndex(&n.Keys); i >= 0 {
+		return n.Children[n.Keys[i]-1].AsNode().Minimum()
 	}
+
 	return nil
 }
 
@@ -59,11 +59,10 @@ func (n *Node48) Maximum() *Leaf {
 		return nil
 	}
 	// Find the last non-zero key in the Keys array
-	for i := 255; i >= 0; i-- {
-		if idx := n.Keys[i]; idx != 0 {
-			return n.Children[idx-1].AsNode().Maximum()
-		}
+	if i := simd.FindLastNonZeroKeyIndex(&n.Keys); i >= 0 {
+		return n.Children[n.Keys[i]-1].AsNode().Maximum()
 	}
+
 	return nil
 }
 
