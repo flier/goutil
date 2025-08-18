@@ -180,11 +180,13 @@ func TestNode16_EdgeCases(t *testing.T) {
 			node.AddChild('a', child1)
 			node.AddChild('a', child2)
 
-			// Should replace the existing child
-			So(node.NumChildren, ShouldEqual, 1)
-			found := node.FindChild('a')
-			So(found, ShouldNotBeNil)
-			So(*found, ShouldEqual, child2.Ref())
+			Convey("Should not replace the existing child", func() {
+				So(node.NumChildren, ShouldEqual, 2)
+
+				found := node.FindChild('a')
+				So(found, ShouldNotBeNil)
+				So(*found, ShouldEqual, child1.Ref())
+			})
 		})
 
 		Convey("When adding zero byte key", func() {

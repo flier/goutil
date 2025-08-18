@@ -3,6 +3,7 @@ package node
 import (
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
+	"github.com/flier/goutil/pkg/arena/art/simd"
 )
 
 // Node16 represents a medium-sized node in an adaptive radix tree, capable of
@@ -66,10 +67,8 @@ func (n *Node16) Maximum() *Leaf {
 //
 // Time complexity: O(n) where n is the number of children (max 16)
 func (n *Node16) FindChild(b byte) *Ref {
-	for i := 0; i < n.NumChildren; i++ {
-		if n.Keys[i] == b {
-			return &n.Children[i]
-		}
+	if i := simd.FindKeyIndex(&n.Keys, n.NumChildren, b); i >= 0 {
+		return &n.Children[i]
 	}
 
 	return nil
@@ -82,30 +81,22 @@ func (n *Node16) FindChild(b byte) *Ref {
 // for efficient Minimum/Maximum operations and maintains the tree's structural
 // properties. If a key already exists, it replaces the existing child.
 //
+// The key finding operations are optimized using SIMD instructions for better
+// performance on modern processors.
+//
 // Precondition: The node must not be full (n.NumChildren < 16)
 // Postcondition: Keys remain sorted, children are properly aligned, NumChildren is incremented (unless replacing)
 func (n *Node16) AddChild(b byte, child AsRef) {
-	// Check if key already exists
-	for i := 0; i < n.NumChildren; i++ {
-		if n.Keys[i] == b {
-			// Replace existing child
-			n.Children[i] = child.Ref()
-			return
-		}
-	}
-
 	debug.Assert(!n.Full(), "node must not be full")
 
-	i := 0
-
-	for ; i < n.NumChildren; i++ {
-		if b < n.Keys[i] {
-			break
-		}
+	// Check if key already exists using SIMD-optimized search
+	i := simd.FindInsertPosition(&n.Keys, n.NumChildren, b)
+	if i >= 0 {
+		copy(n.Keys[i+1:], n.Keys[i:])
+		copy(n.Children[i+1:], n.Children[i:])
+	} else {
+		i = n.NumChildren
 	}
-
-	copy(n.Keys[i+1:], n.Keys[i:])
-	copy(n.Children[i+1:], n.Children[i:])
 
 	n.Keys[i] = b
 	n.Children[i] = child.Ref()
