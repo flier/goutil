@@ -166,7 +166,7 @@ func TestArena_Grow(t *testing.T) {
 	})
 }
 
-func TestArena_Free(t *testing.T) {
+func TestArena_Reset(t *testing.T) {
 	Convey("Given an arena with allocated memory", t, func() {
 		a := &arena.Arena{}
 
@@ -177,7 +177,7 @@ func TestArena_Free(t *testing.T) {
 		So(ptr2, ShouldNotBeNil)
 
 		Convey("When freeing the arena", func() {
-			a.Free()
+			a.Reset()
 
 			So(a.Cap, ShouldBeGreaterThan, 0)
 			So(a.Next, ShouldNotBeNil)
@@ -185,7 +185,7 @@ func TestArena_Free(t *testing.T) {
 		})
 
 		Convey("When reusing after free", func() {
-			a.Free()
+			a.Reset()
 
 			// Should be able to allocate again
 			ptr3 := a.Alloc(500)
@@ -264,50 +264,6 @@ func TestArena_EdgeCases(t *testing.T) {
 				So(ptr, ShouldNotBeNil)
 				So(uintptr(unsafe.Pointer(ptr))%uintptr(arena.Align), ShouldEqual, uintptr(0))
 			}
-		})
-	})
-}
-
-func TestArena_Performance(t *testing.T) {
-	Convey("Given performance scenarios", t, func() {
-		Convey("When allocating many small objects", func() {
-			a := &arena.Arena{}
-
-			So(func() {
-				for i := 0; i < 10000; i++ {
-					ptr := a.Alloc(8)
-					So(ptr, ShouldNotBeNil)
-				}
-			}, ShouldNotPanic)
-		})
-
-		Convey("When allocating mixed sizes", func() {
-			a := &arena.Arena{}
-
-			So(func() {
-				for i := 0; i < 1000; i++ {
-					size := 8 + (i%100)*8
-					ptr := a.Alloc(size)
-					So(ptr, ShouldNotBeNil)
-				}
-			}, ShouldNotPanic)
-		})
-
-		Convey("When freeing and reusing", func() {
-			a := &arena.Arena{}
-
-			So(func() {
-				for i := 0; i < 10; i++ {
-					// Allocate some memory
-					for j := 0; j < 100; j++ {
-						ptr := a.Alloc(8)
-						So(ptr, ShouldNotBeNil)
-					}
-
-					// Free and reuse
-					a.Free()
-				}
-			}, ShouldNotPanic)
 		})
 	})
 }

@@ -68,8 +68,12 @@ type Arena struct {
 // Align is the alignment of all objects on the arena.
 const Align = int(unsafe.Sizeof(uintptr(0)))
 
+type Allocator interface {
+	Alloc(size int) *byte
+}
+
 // New allocates a new value of type T on an arena.
-func New[T any](a *Arena, value T) *T {
+func New[T any](a Allocator, value T) *T {
 	layout := layout.Of[T]()
 	if layout.Align > Align {
 		panic("hyperpb: over-aligned object")
@@ -91,22 +95,21 @@ func (a *Arena) KeepAlive(v any) {
 // All memory is pointer-aligned. If zero is true, the memory will be zeroed.
 func (a *Arena) Alloc(size int) *byte {
 	// Align size to a pointer boundary.
-	size += Align - 1
-	size &^= Align - 1
+	alignedSize := alignUp(size)
 
-	if a.Next.Add(size) <= a.End {
+	if a.Next.Add(alignedSize) <= a.End {
 		// Duplicating this block ensures that Go schedules this branch
 		// correctly. This block is the "hot" side of the branch.
 		p := a.Next.AssertValid()
-		a.Next = a.Next.Add(size)
-		a.Log("alloc", "%v:%v, %d:%d", p, a.Next, size, Align)
+		a.Next = a.Next.Add(alignedSize)
+		a.Log("alloc", "%v:%v, %d:%d", p, a.Next, alignedSize, Align)
 		return p
 	}
 
-	a.Grow(size)
+	a.Grow(alignedSize)
 	p := a.Next.AssertValid()
-	a.Next = a.Next.Add(size)
-	a.Log("alloc", "%v:%v, %d:%d", p, a.Next, size, Align)
+	a.Next = a.Next.Add(alignedSize)
+	a.Log("alloc", "%v:%v, %d:%d", p, a.Next, alignedSize, Align)
 	return p
 }
 
@@ -118,13 +121,13 @@ func (a *Arena) Reserve(size int) {
 	}
 }
 
-// Free resets this arena to an "empty" state, allowing all memory allocated by
+// Reset resets this arena to an "empty" state, allowing all memory allocated by
 // it to be re-used.
 //
 // Although this can be used to amortize trips into Go's allocator, doing so
 // trades off safety: any memory allocated by the arena must not be referenced
-// after a call to Free.
-func (a *Arena) Free() {
+// after a call to Reset.
+func (a *Arena) Reset() {
 	// Discard all but the largest block, which we clear. This means that as
 	// an arena is re-used, we will eventually wind up learning the size of the
 	// largest block we need to allocate, and use only that one, meaning that
