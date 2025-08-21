@@ -1,17 +1,13 @@
-//go:build go1.21
-
 package tree
 
 import (
-	"unsafe"
-
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/art/node"
 	"github.com/flier/goutil/pkg/arena/slice"
 )
 
-func RecursiveInsert(a *arena.Arena, ref *node.Ref, leaf *node.Leaf, depth int, replace bool) unsafe.Pointer {
+func RecursiveInsert[T any](a *arena.Arena, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
 	// If the ref is empty, we need to inject a leaf
 	if ref.Empty() {
 		ref.Replace(leaf)
@@ -28,10 +24,16 @@ func RecursiveInsert(a *arena.Arena, ref *node.Ref, leaf *node.Leaf, depth int, 
 	return InsertToNode(a, ref, leaf, depth, replace)
 }
 
-func InsertToLeaf(a *arena.Arena, ref *node.Ref, leaf *node.Leaf, depth int, replace bool) unsafe.Pointer {
-	curr := ref.AsLeaf()
+// InsertToLeaf inserts a leaf into a leaf node.
+//
+//   - If the leaf matches the key, we need to return the old value, or replace the value if replace is true.
+//   - If the leaf does not match the key, we need to split the leaf into a node4.
+//
+// Do not use this method directly, use [RecursiveInsert] instead.
+func InsertToLeaf[T any](a *arena.Arena, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
+	debug.Assert(ref.IsLeaf(), "current node must be a leaf")
 
-	debug.Assert(curr != nil, "current node must be a leaf")
+	curr := ref.AsLeaf()
 
 	// If the leaf matches the key, we need to return the old value
 	if slice.Equal(curr.Key, leaf.Key) {
@@ -41,11 +43,11 @@ func InsertToLeaf(a *arena.Arena, ref *node.Ref, leaf *node.Leaf, depth int, rep
 			curr.Value = leaf.Value
 		}
 
-		return old
+		return &old
 	}
 
 	// If the leaf does not match the key, we need to split the leaf into a node4
-	newNode := arena.New(a, node.Node4{})
+	newNode := arena.New(a, node.Node4[T]{})
 
 	// If the key and the current key have a common prefix, we need to add it to the node4
 	if i := LongestCommonPrefix(leaf.Key, curr.Key, depth); i > depth {
@@ -63,103 +65,70 @@ func InsertToLeaf(a *arena.Arena, ref *node.Ref, leaf *node.Leaf, depth int, rep
 	return nil
 }
 
-func InsertToNode(a *arena.Arena, ref *node.Ref, leaf *node.Leaf, depth int, replace bool) unsafe.Pointer {
+// InsertToNode inserts a leaf into a node.
+//
+//   - If the node has a prefix, we need to check if the key has the same prefix.
+//   - If the node does not have a prefix, we need to insert the leaf to the node.
+//
+// Returns the old value if the key matches the existing key, or nil if the key is inserted.
+//
+// Do not use this method directly, use [RecursiveInsert] instead.
+func InsertToNode[T any](a *arena.Arena, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
+	debug.Assert(ref.IsNode(), "current node must be a node")
+
 	// If the ref is a node, we need to split the node into a node4
-	curr := ref.AsNode()
+	n := ref.AsNode()
 
-	debug.Assert(curr != nil, "current node must be a node")
-
-	if partial := curr.Prefix(); !partial.Empty() {
-		if diff := PrefixMismatch(curr, partial.Raw(), depth); diff >= partial.Len() {
+	// If the node has a prefix, we need to check if the key has the same prefix
+	if partial := n.Prefix(); !partial.Empty() {
+		if diff := PrefixMismatch(n, leaf.Key, depth); diff >= partial.Len() {
 			depth += partial.Len()
 		} else {
-			newNode := arena.New(a, node.Node4{})
-			newNode.Partial = partial.Slice(0, diff)
+			// If the key has the same prefix, we need to add the prefix to the new node
+			newNode := arena.New(a, node.Node4[T]{})
+			newNode.Partial = partial.Slice(0, diff).Clone(a)
 
-			newNode.AddChild(curr.Prefix().CheckedLoad(diff).UnwrapOrDefault(), curr)
-			curr.Prefix().SetLen(curr.Prefix().Len() - diff + 1)
+			// Add the current node to the new node
+			newNode.AddChild(n.Prefix().CheckedLoad(diff).UnwrapOrDefault(), n)
+			n.SetPrefix(partial.Slice(diff+1, partial.Len()))
+
+			// Add the leaf to the new node
+			newNode.AddChild(leaf.Key.CheckedLoad(depth+diff).UnwrapOrDefault(), leaf)
+
+			ref.Replace(newNode)
+
+			return nil
 		}
 	}
 
-	b := leaf.Key.CheckedLoad(depth).UnwrapOrDefault()
+	key := leaf.Key.CheckedLoad(depth).UnwrapOrDefault()
 
 	// If the child is found, we need to recurse
-	if child := curr.FindChild(b); child != nil {
+	if child := n.FindChild(key); child != nil && !child.Empty() {
 		return RecursiveInsert(a, child, leaf, depth+1, replace)
 	}
 
-	// If the child is not found, we need to insert a new leaf
-	AddChild(a, b, ref, leaf)
+	AddChild(a, ref, key, leaf)
 
 	return nil
 }
 
-func AddChild(a *arena.Arena, b byte, curr *node.Ref, child node.AsRef) {
-	switch n := curr.AsNode().(type) {
-	case *node.Node4:
-		if n.NumChildren < 4 {
-			n.AddChild(b, child)
-		} else {
-			newNode := n.Grow(a)
-			newNode.AddChild(b, child)
+func AddChild[T any](a arena.Allocator, ref *node.Ref[T], key byte, leaf *node.Leaf[T]) {
+	debug.Assert(ref.IsNode(), "current node must be a node")
 
-			curr.Replace(newNode)
+	curr := ref.AsNode()
+
+	// If the child is not found, we need to insert a new leaf
+	if curr.Full() {
+		newNode := curr.Grow(a)
+		newNode.AddChild(key, leaf)
+
+		ref.Replace(newNode)
+
+		if newNode != curr {
+			curr.Release(a)
 		}
-
-	case *node.Node16:
-		if n.NumChildren < 16 {
-			n.AddChild(b, child)
-		} else {
-			newNode := n.Grow(a)
-			newNode.AddChild(b, child)
-
-			curr.Replace(newNode)
-		}
-
-	case *node.Node48:
-		if n.NumChildren < 48 {
-			n.AddChild(b, child)
-		} else {
-			newNode := n.Grow(a)
-			newNode.AddChild(b, child)
-
-			curr.Replace(newNode)
-		}
-	case *node.Node256:
-		n.AddChild(b, child)
-
-	default:
-		panic("invalid node type")
+	} else {
+		curr.AddChild(key, leaf)
 	}
-}
-
-func LongestCommonPrefix(l slice.Slice[byte], r slice.Slice[byte], depth int) (i int) {
-	n := min(l.Len(), r.Len())
-	i = depth
-
-	for i < n && l.Load(i) == r.Load(i) {
-		i++
-	}
-
-	return
-}
-
-func PrefixMismatch(n node.Node, partial []byte, depth int) (i int) {
-	key := n.Prefix().Raw()
-
-	for ; i < min(len(key)-depth, len(partial)); i++ {
-		if key[depth+i] != partial[i] {
-			return i
-		}
-	}
-
-	l := n.Minimum()
-
-	for ; i < min(l.Key.Len(), len(key))-depth; i++ {
-		if l.Key.Load(depth+i) != key[depth+i] {
-			return i
-		}
-	}
-
-	return
 }

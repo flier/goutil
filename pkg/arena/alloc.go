@@ -35,12 +35,12 @@ func (a *Arena) allocChunk(size int) (*byte, int) {
 	n := 1 << log
 	if int(log) < len(a.blocks) {
 		if a.blocks[log] == nil {
-			a.blocks[log] = AllocTraceable(n, unsafe.Pointer(a))
+			a.blocks[log] = allocTraceable(n, unsafe.Pointer(a))
 		}
 		return a.blocks[log], n
 	}
 
-	p := AllocTraceable(n, unsafe.Pointer(a))
+	p := allocTraceable(n, unsafe.Pointer(a))
 	if a.blocks == nil {
 		a.blocks = make([]*byte, 64)
 		if debug.Enabled {
@@ -57,13 +57,13 @@ func (a *Arena) allocChunk(size int) (*byte, int) {
 	return p, n
 }
 
-// AllocTraceable allocates size bytes of garbage-collected memory and returns
+// allocTraceable allocates size bytes of garbage-collected memory and returns
 // a pointer to them.
 //
 // This function will also store ptr in the same allocation in such a way that
 // as long as any pointer into the allocated memory is live, ptr will be marked
 // as live by the garbage collector.
-func AllocTraceable(size int, ptr unsafe.Pointer) *byte {
+func allocTraceable(size int, ptr unsafe.Pointer) *byte {
 	// This needs to be done with reflection, because we need a weirdly-shaped
 	// allocation: a bunch of bytes followed by a pointer.
 	//

@@ -21,12 +21,12 @@ type Slice[T any] struct {
 }
 
 // FromBytes allocates a slice for the given bytes.
-func FromBytes(a *arena.Arena, b []byte) Slice[byte] {
+func FromBytes(a arena.Allocator, b []byte) Slice[byte] {
 	return Of(a, b...)
 }
 
 // FromString allocates a slice for the given string.
-func FromString(a *arena.Arena, s string) Slice[byte] {
+func FromString(a arena.Allocator, s string) Slice[byte] {
 	return Of(a, []byte(s)...)
 }
 
@@ -35,22 +35,20 @@ func FromParts[T any](ptr *T, len, cap uint32) Slice[T] {
 	return Slice[T]{ptr, len, cap}
 }
 
-// Addr converts this slice into an address slice.
-//
-// See the caveats of [xunsafe.AddrOf].
-func (s Slice[T]) Addr() Addr[T] {
-	return Addr[T]{xunsafe.AddrOf(s.ptr), s.len, s.cap}
-}
-
 // Of allocates a slice for the given values.
-func Of[T any](a *arena.Arena, values ...T) Slice[T] {
+func Of[T any](a arena.Allocator, values ...T) Slice[T] {
 	s := Make[T](a, len(values))
 	copy(s.Raw(), values)
 	return s
 }
 
+// Clone clones a slice.
+func Clone[T any](a arena.Allocator, s Slice[T]) Slice[T] {
+	return Of(a, s.Raw()...)
+}
+
 // Make allocates a slice of the given length.
-func Make[T any](a *arena.Arena, n int) Slice[T] {
+func Make[T any](a arena.Allocator, n int) Slice[T] {
 	cap := sliceLayout[T](n)
 	p := xunsafe.Cast[T](a.Alloc(cap))
 
@@ -59,7 +57,14 @@ func Make[T any](a *arena.Arena, n int) Slice[T] {
 	return s
 }
 
+// Release releases the slice.
+func (s Slice[T]) Release(a arena.Allocator) {
+	a.Release(xunsafe.Cast[byte](s.ptr), s.Cap()*layout.Size[T]())
+}
+
 // Equal returns true if a and b are equal.
+//
+//go:nosplit
 func Equal[T comparable](a, b Slice[T]) bool {
 	if a.Ptr() == nil && b.Ptr() == nil {
 		return true
@@ -73,13 +78,41 @@ func Equal[T comparable](a, b Slice[T]) bool {
 		return false
 	}
 
+	if a.Ptr() == b.Ptr() {
+		return true
+	}
+
 	for i := 0; i < a.Len(); i++ {
-		if a.Load(i) != b.Load(i) {
+		if a.unsafeLoad(i) != b.unsafeLoad(i) {
 			return false
 		}
 	}
 
 	return true
+}
+
+// EqualTo returns true if a and b are equal.
+//
+//go:nosplit
+func EqualTo[T comparable](a Slice[T], b []T) bool {
+	if a.Len() != len(b) {
+		return false
+	}
+
+	for i := 0; i < a.Len(); i++ {
+		if a.unsafeLoad(i) != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Addr converts this slice into an address slice.
+//
+// See the caveats of [xunsafe.AddrOf].
+func (s Slice[T]) Addr() Addr[T] {
+	return Addr[T]{xunsafe.AddrOf(s.ptr), s.len, s.cap}
 }
 
 // Ptr returns this slice's pointer value.
@@ -143,7 +176,16 @@ func (s Slice[T]) CheckedLoad(n int) opt.Option[T] {
 	return opt.Some(s.unsafeLoad(n))
 }
 
-func (s Slice[T]) unsafeLoad(n int) T { return xunsafe.Load(s.Ptr(), n) }
+// unsafeLoad loads a value at the given index.
+//
+// This function is used to avoid the overhead of the debug.Enabled check.
+//
+// It is only used in the unsafe code path, the caller must ensure that the index is in bounds.
+//
+//go:nosplit
+func (s Slice[T]) unsafeLoad(n int) T {
+	return xunsafe.Load(s.Ptr(), n)
+}
 
 // Store stores a value at the given index.
 func (s Slice[T]) Store(n int, v T) {
@@ -231,9 +273,34 @@ func (s Slice[T]) Slice(start, end int) Slice[T] {
 	}
 }
 
+// Clone clones a slice.
+func (s Slice[T]) Clone(a arena.Allocator) Slice[T] {
+	return Clone(a, s)
+}
+
+// Prepend prepends the given elements to a slice, reallocating on the given
+// arena if necessary.
+func (s Slice[T]) Prepend(a arena.AllocatorExt, elems ...T) Slice[T] {
+	var z T
+	a.Log("prepend", "%p[%d:%d], %T x %d", s.ptr, s.len, s.cap, z, len(elems))
+
+	if s.Cap()-s.Len() < len(elems) {
+		s = s.Grow(a, len(elems))
+	}
+
+	buf := unsafe.Slice(s.Ptr(), s.cap)
+
+	copy(buf[len(elems):], buf[:s.len])
+	copy(buf[:len(elems)], elems)
+
+	s.len += uint32(len(elems))
+
+	return s
+}
+
 // Append appends the given elements to a slice, reallocating on the given
 // arena if necessary.
-func (s Slice[T]) Append(a *arena.Arena, elems ...T) Slice[T] {
+func (s Slice[T]) Append(a arena.AllocatorExt, elems ...T) Slice[T] {
 	var z T
 	a.Log("append", "%p[%d:%d], %T x %d", s.ptr, s.len, s.cap, z, len(elems))
 
@@ -243,13 +310,14 @@ func (s Slice[T]) Append(a *arena.Arena, elems ...T) Slice[T] {
 
 	copy(s.Rest(), elems)
 	s.len += uint32(len(elems))
+
 	return s
 }
 
 // AppendOne is an optimized version of append for one element.
 //
 //go:nosplit
-func (s Slice[T]) AppendOne(a *arena.Arena, elem T) Slice[T] {
+func (s Slice[T]) AppendOne(a arena.AllocatorExt, elem T) Slice[T] {
 	a.Log("append", "%p[%d:%d], %T x 1", s.ptr, s.len, s.cap, elem)
 
 	if s.Len() == s.Cap() {
@@ -262,7 +330,7 @@ func (s Slice[T]) AppendOne(a *arena.Arena, elem T) Slice[T] {
 }
 
 // Grow extends the capacity of this slice by n bytes.
-func (s Slice[T]) Grow(a *arena.Arena, n int) Slice[T] {
+func (s Slice[T]) Grow(a arena.AllocatorExt, n int) Slice[T] {
 	var z T
 	size := layout.Size[T]()
 	a.Log("grow", "%p[%d:%d], %d x %T", s.ptr, s.len, s.cap, n, z)
@@ -283,10 +351,10 @@ func (s Slice[T]) Grow(a *arena.Arena, n int) Slice[T] {
 		// This Just Works regardless of whether the allocation is growing or
 		// shrinking. If it's shrinking, delta will be negative, and a.left
 		// is never negative, so this will add back the spare capacity.
-		i := a.Next.Add(-oldSize)
+		i := a.Next().Add(-oldSize)
 		j := i.Add(newSize)
-		if xunsafe.AddrOf(p) == i && j <= a.End {
-			a.Next = j
+		if xunsafe.AddrOf(p) == i && j <= a.End() {
+			a.Advance(newSize)
 			a.Log("fast realloc", "%p, %d->%d:%d", p, oldSize, newSize, arena.Align)
 			break
 		}
@@ -390,9 +458,11 @@ func (s Untyped) String() string {
 
 func sliceLayout[T any](n int) (size int) {
 	layout := layout.Of[T]()
+
 	if debug.Enabled && layout.Align > arena.Align {
 		// This doesn't seem to inline correctly if we don't use debug.Enabled.
-		panic("hyperpb: over-aligned object")
+		panic("over-aligned object")
 	}
+
 	return arena.SuggestSize(layout.Size * n)
 }

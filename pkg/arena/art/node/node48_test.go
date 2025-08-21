@@ -1,4 +1,4 @@
-package node
+package node_test
 
 import (
 	"testing"
@@ -6,13 +6,14 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 
 	"github.com/flier/goutil/pkg/arena"
+	. "github.com/flier/goutil/pkg/arena/art/node"
 	"github.com/flier/goutil/pkg/arena/slice"
 )
 
 func TestNode48(t *testing.T) {
 	Convey("Given a Node48", t, func() {
 		a := &arena.Arena{}
-		node := arena.New(a, Node48{})
+		node := arena.New(a, Node48[any]{})
 
 		Convey("When checking basic properties", func() {
 			So(node.Type(), ShouldEqual, TypeNode48)
@@ -23,9 +24,9 @@ func TestNode48(t *testing.T) {
 
 		Convey("When adding children", func() {
 			// Create mock children
-			children := make([]*Leaf, 48)
+			children := make([]*Leaf[any], 48)
 			for i := 0; i < 48; i++ {
-				children[i] = arena.New(a, Leaf{Key: slice.Of(a, byte(i))})
+				children[i] = NewLeaf[any](a, []byte{byte(i)}, nil)
 			}
 
 			Convey("Adding first child", func() {
@@ -81,9 +82,9 @@ func TestNode48(t *testing.T) {
 
 		Convey("When finding children", func() {
 			// Setup children
-			children := make([]*Leaf, 10)
+			children := make([]*Leaf[any], 10)
 			for i := 0; i < 10; i++ {
-				children[i] = arena.New(a, Leaf{Key: slice.Of(a, byte(i*25))})
+				children[i] = NewLeaf[any](a, []byte{byte(i * 25)}, nil)
 				node.AddChild(byte(i*25), children[i])
 			}
 
@@ -121,7 +122,7 @@ func TestNode48(t *testing.T) {
 
 			Convey("Node with 24 children is not full", func() {
 				for i := 0; i < 24; i++ {
-					child := arena.New(a, Leaf{Key: slice.Of(a, byte(i*10))})
+					child := NewLeaf[any](a, []byte{byte(i * 10)}, nil)
 					node.AddChild(byte(i*10), child)
 				}
 				So(node.Full(), ShouldBeFalse)
@@ -129,7 +130,7 @@ func TestNode48(t *testing.T) {
 
 			Convey("Node with 48 children is full", func() {
 				for i := 0; i < 48; i++ {
-					child := arena.New(a, Leaf{Key: slice.Of(a, byte(i*5))})
+					child := NewLeaf[any](a, []byte{byte(i * 5)}, nil)
 					node.AddChild(byte(i*5), child)
 				}
 				So(node.Full(), ShouldBeTrue)
@@ -139,7 +140,7 @@ func TestNode48(t *testing.T) {
 		Convey("When growing to Node256", func() {
 			// Setup children
 			for i := 0; i < 48; i++ {
-				child := arena.New(a, Leaf{Key: slice.Of(a, byte(i*5))})
+				child := NewLeaf[any](a, []byte{byte(i * 5)}, nil)
 				node.AddChild(byte(i*5), child)
 			}
 
@@ -150,7 +151,7 @@ func TestNode48(t *testing.T) {
 
 			Convey("Growing should preserve all children", func() {
 				newNode := node.Grow(a)
-				node256 := newNode.(*Node256)
+				node256 := newNode.(*Node256[any])
 
 				So(node256.NumChildren, ShouldEqual, 48)
 				// Check that all children are properly mapped
@@ -168,9 +169,9 @@ func TestNode48(t *testing.T) {
 			})
 
 			Convey("Node with children should return correct min/max", func() {
-				child1 := arena.New(a, Leaf{Key: slice.FromString(a, "a")})
-				child2 := arena.New(a, Leaf{Key: slice.FromString(a, "b")})
-				child3 := arena.New(a, Leaf{Key: slice.FromString(a, "c")})
+				child1 := NewLeaf[any](a, []byte("a"), nil)
+				child2 := NewLeaf[any](a, []byte("b"), nil)
+				child3 := NewLeaf[any](a, []byte("c"), nil)
 
 				node.AddChild('c', child3)
 				node.AddChild('a', child1)
@@ -186,11 +187,11 @@ func TestNode48(t *testing.T) {
 func TestNode48_EdgeCases(t *testing.T) {
 	Convey("Given a Node48 with edge cases", t, func() {
 		a := &arena.Arena{}
-		node := arena.New(a, Node48{})
+		node := arena.New(a, Node48[any]{})
 
 		Convey("When adding duplicate keys", func() {
-			child1 := arena.New(a, Leaf{Key: slice.FromString(a, "a")})
-			child2 := arena.New(a, Leaf{Key: slice.FromString(a, "a")})
+			child1 := NewLeaf[any](a, []byte("a"), nil)
+			child2 := NewLeaf[any](a, []byte("a"), nil)
 
 			node.AddChild('a', child1)
 			node.AddChild('a', child2)
@@ -203,7 +204,7 @@ func TestNode48_EdgeCases(t *testing.T) {
 		})
 
 		Convey("When adding zero byte key", func() {
-			child := arena.New(a, Leaf{Key: slice.Of(a, byte(0))})
+			child := NewLeaf[any](a, []byte{0}, nil)
 			node.AddChild(0, child)
 
 			So(node.NumChildren, ShouldEqual, 1)
@@ -213,7 +214,7 @@ func TestNode48_EdgeCases(t *testing.T) {
 		})
 
 		Convey("When adding 255 byte key", func() {
-			child := arena.New(a, Leaf{Key: slice.Of(a, byte(255))})
+			child := NewLeaf[any](a, []byte{255}, nil)
 			node.AddChild(255, child)
 
 			So(node.NumChildren, ShouldEqual, 1)
@@ -226,7 +227,7 @@ func TestNode48_EdgeCases(t *testing.T) {
 			// Add children with very sparse distribution
 			sparseKeys := []byte{0, 64, 128, 192, 255}
 			for i, key := range sparseKeys {
-				child := arena.New(a, Leaf{Key: slice.Of(a, key)})
+				child := NewLeaf[any](a, []byte{key}, nil)
 				node.AddChild(key, child)
 				So(node.NumChildren, ShouldEqual, i+1)
 			}
@@ -243,13 +244,13 @@ func TestNode48_EdgeCases(t *testing.T) {
 func TestNode48_Performance(t *testing.T) {
 	Convey("Given a Node48 with performance considerations", t, func() {
 		a := &arena.Arena{}
-		node := arena.New(a, Node48{})
+		node := arena.New(a, Node48[any]{})
 
 		Convey("When adding many children", func() {
 			// Test that adding 48 children works correctly
-			children := make([]*Leaf, 48)
+			children := make([]*Leaf[any], 48)
 			for i := 0; i < 48; i++ {
-				children[i] = arena.New(a, Leaf{Key: slice.Of(a, byte(i*5))})
+				children[i] = NewLeaf[any](a, []byte{byte(i * 5)}, nil)
 				node.AddChild(byte(i*5), children[i])
 			}
 
@@ -268,7 +269,7 @@ func TestNode48_Performance(t *testing.T) {
 			// Add children with sparse distribution to test search performance
 			sparseKeys := []byte{1, 3, 7, 15, 31, 63, 127, 255}
 			for _, key := range sparseKeys {
-				child := arena.New(a, Leaf{Key: slice.Of(a, key)})
+				child := NewLeaf[any](a, []byte{key}, nil)
 				node.AddChild(key, child)
 			}
 
@@ -285,8 +286,8 @@ func TestNode48_Performance(t *testing.T) {
 
 		Convey("When testing 1-based indexing", func() {
 			// Verify that the 1-based indexing works correctly
-			child1 := arena.New(a, Leaf{Key: slice.Of(a, byte(100))})
-			child2 := arena.New(a, Leaf{Key: slice.Of(a, byte(200))})
+			child1 := NewLeaf[any](a, []byte{100}, nil)
+			child2 := NewLeaf[any](a, []byte{200}, nil)
 
 			node.AddChild(100, child1)
 			node.AddChild(200, child2)
@@ -295,6 +296,265 @@ func TestNode48_Performance(t *testing.T) {
 			So(node.Keys[200], ShouldEqual, byte(2))
 			So(node.Children[0], ShouldEqual, child1.Ref())
 			So(node.Children[1], ShouldEqual, child2.Ref())
+		})
+	})
+}
+
+func TestNode48_RemoveChild(t *testing.T) {
+	Convey("Given a Node48 with children", t, func() {
+		a := &arena.Arena{}
+		node := arena.New(a, Node48[any]{})
+
+		// Setup children
+		children := make([]*Leaf[any], 10)
+		for i := 0; i < 10; i++ {
+			children[i] = NewLeaf[any](a, []byte{byte(i * 25)}, nil)
+			node.AddChild(byte(i*25), children[i])
+		}
+
+		So(node.NumChildren, ShouldEqual, 10)
+
+		Convey("When removing the first child", func() {
+			childRef := node.FindChild(0)
+			So(childRef, ShouldNotBeNil)
+
+			node.RemoveChild(0, childRef)
+
+			Convey("Then NumChildren should be decremented", func() {
+				So(node.NumChildren, ShouldEqual, 9)
+			})
+
+			Convey("And the child should not be found", func() {
+				found := node.FindChild(0)
+				So(found, ShouldBeNil)
+			})
+
+			Convey("And the key should be cleared", func() {
+				So(node.Keys[0], ShouldEqual, byte(0))
+			})
+
+			Convey("And remaining children should still be accessible", func() {
+				So(node.FindChild(25), ShouldNotBeNil)
+				So(node.FindChild(50), ShouldNotBeNil)
+				So(node.FindChild(75), ShouldNotBeNil)
+			})
+		})
+
+		Convey("When removing the middle child", func() {
+			childRef := node.FindChild(50)
+			So(childRef, ShouldNotBeNil)
+
+			node.RemoveChild(50, childRef)
+
+			Convey("Then NumChildren should be decremented", func() {
+				So(node.NumChildren, ShouldEqual, 9)
+			})
+
+			Convey("And the child should not be found", func() {
+				found := node.FindChild(50)
+				So(found, ShouldBeNil)
+			})
+
+			Convey("And the key should be cleared", func() {
+				So(node.Keys[50], ShouldEqual, byte(0))
+			})
+
+			Convey("And remaining children should still be accessible", func() {
+				So(node.FindChild(0), ShouldNotBeNil)
+				So(node.FindChild(25), ShouldNotBeNil)
+				So(node.FindChild(75), ShouldNotBeNil)
+			})
+		})
+
+		Convey("When removing the last child", func() {
+			childRef := node.FindChild(225)
+			So(childRef, ShouldNotBeNil)
+
+			node.RemoveChild(225, childRef)
+
+			Convey("Then NumChildren should be decremented", func() {
+				So(node.NumChildren, ShouldEqual, 9)
+			})
+
+			Convey("And the child should not be found", func() {
+				found := node.FindChild(225)
+				So(found, ShouldBeNil)
+			})
+
+			Convey("And the key should be cleared", func() {
+				So(node.Keys[225], ShouldEqual, byte(0))
+			})
+
+			Convey("And remaining children should still be accessible", func() {
+				So(node.FindChild(0), ShouldNotBeNil)
+				So(node.FindChild(25), ShouldNotBeNil)
+				So(node.FindChild(50), ShouldNotBeNil)
+			})
+		})
+
+		Convey("When removing multiple children", func() {
+			// Remove 25 first
+			childRef := node.FindChild(25)
+			node.RemoveChild(25, childRef)
+
+			// Remove 100 second
+			childRef = node.FindChild(100)
+			node.RemoveChild(100, childRef)
+
+			Convey("Then NumChildren should be 8", func() {
+				So(node.NumChildren, ShouldEqual, 8)
+			})
+
+			Convey("And removed children should not be found", func() {
+				So(node.FindChild(25), ShouldBeNil)
+				So(node.FindChild(100), ShouldBeNil)
+			})
+
+			Convey("And remaining children should still be accessible", func() {
+				So(node.FindChild(0), ShouldNotBeNil)
+				So(node.FindChild(50), ShouldNotBeNil)
+				So(node.FindChild(75), ShouldNotBeNil)
+				So(node.FindChild(125), ShouldNotBeNil)
+				So(node.FindChild(150), ShouldNotBeNil)
+				So(node.FindChild(175), ShouldNotBeNil)
+				So(node.FindChild(200), ShouldNotBeNil)
+				So(node.FindChild(225), ShouldNotBeNil)
+			})
+
+			Convey("And keys should be properly cleared", func() {
+				So(node.Keys[25], ShouldEqual, byte(0))
+				So(node.Keys[100], ShouldEqual, byte(0))
+			})
+		})
+	})
+}
+
+func TestNode48_Shrink(t *testing.T) {
+	Convey("Given a Node48", t, func() {
+		a := &arena.Arena{}
+
+		node := arena.New(a, Node48[any]{})
+		node.Partial = slice.FromString(a, "+")
+
+		Convey("When shrinking with 12 or more children", func() {
+			// Add 15 children
+			for i := 0; i < 15; i++ {
+				child := NewLeaf[any](a, []byte{byte(i * 16)}, nil)
+				node.AddChild(byte(i*16), child)
+			}
+
+			So(node.NumChildren, ShouldEqual, 15)
+
+			result := node.Shrink(a)
+
+			Convey("Then should return the same node", func() {
+				So(result, ShouldEqual, node)
+			})
+
+			Convey("And NumChildren should remain unchanged", func() {
+				So(node.NumChildren, ShouldEqual, 15)
+			})
+		})
+
+		Convey("When shrinking with exactly 11 children", func() {
+			// Add 11 children
+			for i := 0; i < 11; i++ {
+				child := NewLeaf[any](a, []byte{byte(i * 20)}, nil)
+				node.AddChild(byte(i*20), child)
+			}
+
+			So(node.NumChildren, ShouldEqual, 11)
+
+			result := node.Shrink(a)
+
+			Convey("Then should return a Node16", func() {
+				So(result.Type(), ShouldEqual, TypeNode16)
+				So(result.Prefix().Raw(), ShouldEqual, []byte("+"))
+			})
+
+			Convey("And the new Node16 should have the same children", func() {
+				node16 := result.(*Node16[any])
+				So(node16.NumChildren, ShouldEqual, 11)
+
+				// Verify all children are accessible
+				for i := 0; i < 11; i++ {
+					key := byte(i * 20)
+					found := node16.FindChild(key)
+					So(found, ShouldNotBeNil)
+				}
+			})
+		})
+
+		Convey("When shrinking with exactly 10 children", func() {
+			// Add 10 children
+			for i := 0; i < 10; i++ {
+				child := NewLeaf[any](a, []byte{byte(i * 25)}, nil)
+				node.AddChild(byte(i*25), child)
+			}
+
+			So(node.NumChildren, ShouldEqual, 10)
+
+			result := node.Shrink(a)
+
+			Convey("Then should return a Node16", func() {
+				So(result.Type(), ShouldEqual, TypeNode16)
+				So(result.Prefix().Raw(), ShouldEqual, []byte("+"))
+			})
+
+			Convey("And the new Node16 should have the same children", func() {
+				node16 := result.(*Node16[any])
+				So(node16.NumChildren, ShouldEqual, 10)
+
+				// Verify all children are accessible
+				for i := 0; i < 10; i++ {
+					key := byte(i * 25)
+					found := node16.FindChild(key)
+					So(found, ShouldNotBeNil)
+				}
+			})
+
+			Convey("And the original node should be freed", func() {
+				// The original node should be replaced, so we can't access it directly
+				// This is verified by the fact that we get a Node16 back
+			})
+		})
+
+		Convey("When shrinking with exactly 1 child", func() {
+			child := NewLeaf[any](a, []byte("+a"), nil)
+			node.AddChild('a', child)
+
+			So(node.NumChildren, ShouldEqual, 1)
+
+			result := node.Shrink(a)
+
+			Convey("Then should return a Node16", func() {
+				So(result.Type(), ShouldEqual, TypeNode16)
+				So(result.Prefix().Raw(), ShouldEqual, []byte("+"))
+			})
+
+			Convey("And the new Node16 should have the same child", func() {
+				node16 := result.(*Node16[any])
+				So(node16.NumChildren, ShouldEqual, 1)
+				found := node16.FindChild('a')
+				So(found, ShouldNotBeNil)
+				So(*found, ShouldEqual, child.Ref())
+			})
+		})
+
+		Convey("When shrinking with no children", func() {
+			So(node.NumChildren, ShouldEqual, 0)
+
+			result := node.Shrink(a)
+
+			Convey("Then should return a Node16", func() {
+				So(result.Type(), ShouldEqual, TypeNode16)
+				So(result.Prefix().Raw(), ShouldEqual, []byte("+"))
+			})
+
+			Convey("And the new Node16 should have no children", func() {
+				node16 := result.(*Node16[any])
+				So(node16.NumChildren, ShouldEqual, 0)
+			})
 		})
 	})
 }

@@ -180,8 +180,8 @@ func TestArena_Reset(t *testing.T) {
 			a.Reset()
 
 			So(a.Cap, ShouldBeGreaterThan, 0)
-			So(a.Next, ShouldNotBeNil)
-			So(a.End, ShouldNotBeNil)
+			So(a.Next(), ShouldNotBeNil)
+			So(a.End(), ShouldNotBeNil)
 		})
 
 		Convey("When reusing after free", func() {
@@ -214,19 +214,6 @@ func TestArena_KeepAlive(t *testing.T) {
 				for _, v := range values {
 					a.KeepAlive(v)
 				}
-			}, ShouldNotPanic)
-		})
-	})
-}
-
-func TestArena_Log(t *testing.T) {
-	Convey("Given an arena", t, func() {
-		a := &arena.Arena{}
-
-		Convey("When logging operations", func() {
-			// This should not panic
-			So(func() {
-				a.Log("test", "test message")
 			}, ShouldNotPanic)
 		})
 	})
@@ -286,29 +273,6 @@ func TestSuggestSize(t *testing.T) {
 			So(arena.SuggestSize(1025), ShouldEqual, 2048)
 			So(arena.SuggestSize(2047), ShouldEqual, 2048)
 			So(arena.SuggestSize(1024*1024), ShouldEqual, 1024*1024)
-		})
-	})
-}
-
-func TestAllocTraceable(t *testing.T) {
-	Convey("Given traceable allocations", t, func() {
-		Convey("When allocating traceable memory", func() {
-			a := &arena.Arena{}
-			ptr := arena.AllocTraceable(100, unsafe.Pointer(a))
-
-			So(ptr, ShouldNotBeNil)
-			So(uintptr(unsafe.Pointer(ptr))%uintptr(arena.Align), ShouldEqual, uintptr(0))
-		})
-
-		Convey("When allocating different sizes", func() {
-			a := &arena.Arena{}
-			sizes := []int{8, 16, 32, 64, 128, 256, 512, 1024}
-
-			for _, size := range sizes {
-				ptr := arena.AllocTraceable(size, unsafe.Pointer(a))
-				So(ptr, ShouldNotBeNil)
-				So(uintptr(unsafe.Pointer(ptr))%uintptr(arena.Align), ShouldEqual, uintptr(0))
-			}
 		})
 	})
 }
