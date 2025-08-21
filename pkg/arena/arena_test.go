@@ -148,11 +148,11 @@ func TestArena_Grow(t *testing.T) {
 			ptr := a.Alloc(largeSize)
 
 			So(ptr, ShouldNotBeNil)
-			So(a.Cap, ShouldBeGreaterThanOrEqualTo, largeSize)
+			So(a.Cap(), ShouldBeGreaterThanOrEqualTo, largeSize)
 		})
 
 		Convey("When growing multiple times", func() {
-			initialCap := a.Cap
+			initialCap := a.Cap()
 
 			// Force multiple grows
 			for i := 0; i < 5; i++ {
@@ -161,7 +161,7 @@ func TestArena_Grow(t *testing.T) {
 				So(ptr, ShouldNotBeNil)
 			}
 
-			So(a.Cap, ShouldBeGreaterThan, initialCap)
+			So(a.Cap(), ShouldBeGreaterThan, initialCap)
 		})
 	})
 }
@@ -179,7 +179,7 @@ func TestArena_Reset(t *testing.T) {
 		Convey("When freeing the arena", func() {
 			a.Reset()
 
-			So(a.Cap, ShouldBeGreaterThan, 0)
+			So(a.Cap(), ShouldBeGreaterThan, 0)
 			So(a.Next(), ShouldNotBeNil)
 			So(a.End(), ShouldNotBeNil)
 		})
@@ -237,7 +237,7 @@ func TestArena_EdgeCases(t *testing.T) {
 			ptr := a.Alloc(largeSize)
 
 			So(ptr, ShouldNotBeNil)
-			So(a.Cap, ShouldBeGreaterThanOrEqualTo, largeSize)
+			So(a.Cap(), ShouldBeGreaterThanOrEqualTo, largeSize)
 		})
 
 		Convey("When allocating with odd sizes", func() {
