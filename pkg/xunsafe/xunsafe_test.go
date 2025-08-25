@@ -4,49 +4,66 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/stretchr/testify/assert"
+	. "github.com/smartystreets/goconvey/convey"
 
 	"github.com/flier/goutil/pkg/xunsafe"
 )
 
 func TestIndirect(t *testing.T) {
-	t.Parallel()
+	Convey("Given indirect type checks", t, func() {
+		So(xunsafe.IsDirect[int](), ShouldBeFalse)
+		So(xunsafe.IsDirect[string](), ShouldBeFalse)
+		So(xunsafe.IsDirect[[]byte](), ShouldBeFalse)
 
-	assert.False(t, xunsafe.IsDirect[int]())
-	assert.False(t, xunsafe.IsDirect[string]())
-	assert.False(t, xunsafe.IsDirect[[]byte]())
-
-	assert.True(t, xunsafe.IsDirect[*int]())
-	assert.True(t, xunsafe.IsDirect[[1]*int]())
-	assert.True(t, xunsafe.IsDirect[any]())
-	assert.True(t, xunsafe.IsDirect[map[int]int]())
-	assert.True(t, xunsafe.IsDirect[chan int]())
-	assert.True(t, xunsafe.IsDirect[unsafe.Pointer]())
-	assert.True(t, xunsafe.IsDirect[struct{ _ *int }]())
-	assert.True(t, xunsafe.IsDirect[*struct{ _ *int }]())
+		So(xunsafe.IsDirect[*int](), ShouldBeTrue)
+		So(xunsafe.IsDirect[[1]*int](), ShouldBeTrue)
+		So(xunsafe.IsDirect[any](), ShouldBeTrue)
+		So(xunsafe.IsDirect[map[int]int](), ShouldBeTrue)
+		So(xunsafe.IsDirect[chan int](), ShouldBeTrue)
+		So(xunsafe.IsDirect[unsafe.Pointer](), ShouldBeTrue)
+		So(xunsafe.IsDirect[struct{ _ *int }](), ShouldBeTrue)
+		So(xunsafe.IsDirect[*struct{ _ *int }](), ShouldBeTrue)
+	})
 }
 
 func TestAnyBytes(t *testing.T) {
-	t.Parallel()
+	Convey("Given any bytes operations", t, func() {
+		i := 0xaaaa
+		p := &i
+		So(xunsafe.IsDirectAny(i), ShouldBeFalse)
+		So(xunsafe.IsDirectAny(p), ShouldBeTrue)
 
-	i := 0xaaaa
-	p := &i
-	assert.False(t, xunsafe.IsDirectAny(i))
-	assert.True(t, xunsafe.IsDirectAny(p))
+		So(xunsafe.AnyBytes(i), ShouldEqual, xunsafe.Bytes(&i))
+		So(xunsafe.AnyBytes(p), ShouldEqual, xunsafe.Bytes(&p))
 
-	assert.Equal(t, xunsafe.Bytes(&i), xunsafe.AnyBytes(i))
-	assert.Equal(t, xunsafe.Bytes(&p), xunsafe.AnyBytes(p))
-
-	p2 := struct{ p *int }{p}
-	assert.Equal(t, xunsafe.Bytes(&p2), xunsafe.AnyBytes(p2))
+		p2 := struct{ p *int }{p}
+		So(xunsafe.AnyBytes(p2), ShouldEqual, xunsafe.Bytes(&p2))
+	})
 }
 
-func TestPC(t *testing.T) {
-	t.Parallel()
+func TestXunsafePC(t *testing.T) {
+	Convey("Given a PC operation", t, func() {
+		f := func() int { return 42 }
+		pc := xunsafe.NewPC(f)
 
-	f := func() int { return 42 }
-	pc := xunsafe.NewPC(f)
+		t.Logf("%#x\n", pc)
+		So(pc.Get()(), ShouldEqual, 42)
+	})
+}
 
-	t.Logf("%#x\n", pc)
-	assert.Equal(t, 42, pc.Get()())
+func TestXunsafeComprehensive(t *testing.T) {
+	Convey("Given comprehensive xunsafe tests", t, func() {
+		// Test BitCast
+		i := 42
+		casted := xunsafe.BitCast[uint64](i)
+		So(casted, ShouldEqual, uint64(42))
+
+		// Test Ping
+		ptr := &i
+		xunsafe.Ping(ptr) // Should not panic
+
+		// Test NoCopy
+		var noCopy xunsafe.NoCopy
+		_ = noCopy // Use the variable to avoid unused variable warning
+	})
 }

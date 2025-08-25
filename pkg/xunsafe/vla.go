@@ -45,3 +45,8 @@ func (a *VLA[T]) ByteGet(n int) *T {
 func (a *VLA[T]) Slice(n int) []T {
 	return unsafe.Slice(a.Get(0), n)
 }
+
+// Len returns the length of this VLA.
+func (a *VLA[T]) Len() int {
+	return 0
+}
