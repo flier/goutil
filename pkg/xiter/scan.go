@@ -46,6 +46,6 @@ func Scan2[C, K, V, B any](x iter.Seq2[K, V], ctx C, f func(C, K, V) (B, bool)) 
 
 // Scan2Func applies the provided function f to each key-value in the input iterator x,
 // yielding a new iterator of the results of applying f.
-func Scan2Func[C, K, V, B any](ctx C, f func(C, K, V) (B, bool)) Mapping2Func[K, V, B] {
+func Scan2Func[C, K, V, B any](ctx C, f func(C, K, V) (B, bool)) MappingValueFunc[K, V, B] {
 	return bind23(Scan2, ctx, f)
 }

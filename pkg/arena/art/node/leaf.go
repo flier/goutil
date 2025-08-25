@@ -71,7 +71,6 @@ var _ Node[any] = (*Leaf[any])(nil)
 //	leaf := NewLeaf(a, []byte("hello"), "world")
 func NewLeaf[T any](a arena.Allocator, key []byte, value T) *Leaf[T] {
 	debug.Assert(a != nil, "arena must not be nil")
-	debug.Assert(len(key) > 0, "key must not be nil or empty")
 
 	return arena.New(a, Leaf[T]{slice.FromBytes(a, key), value})
 }
@@ -197,4 +196,13 @@ func (l *Leaf[T]) Release(a arena.Allocator) {
 //	}
 func (l *Leaf[T]) Matches(key []byte) bool {
 	return slice.EqualTo(l.Key, key)
+}
+
+// MatchesPrefix checks if this leaf's key matches the given prefix.
+//
+// The comparison is done using slice.HasPrefix for efficient prefix matching.
+// This method is useful for checking if a key matches a given prefix during
+// prefix search operations.
+func (l *Leaf[T]) MatchesPrefix(prefix []byte) bool {
+	return slice.HasPrefix(l.Key, prefix)
 }

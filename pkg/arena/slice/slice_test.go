@@ -3,6 +3,7 @@
 package slice_test
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -32,6 +33,10 @@ func TestSlice_Of(t *testing.T) {
 				So(s.CheckedLoad(i), ShouldEqual, opt.Some(expected))
 				So(s.CheckedGet(i), ShouldEqual, opt.Some(&expected))
 			}
+
+			Convey("When formatting slice", func() {
+				So(fmt.Sprint(s), ShouldEqual, "[1 2 3 4 5]")
+			})
 		})
 
 		Convey("When creating slice from empty values", func() {
@@ -349,6 +354,10 @@ func TestAddr_AssertValid(t *testing.T) {
 
 			So(valid.Len(), ShouldEqual, 3)
 			So(valid.Cap(), ShouldEqual, s.Cap())
+		})
+
+		Convey("When formatting address slice", func() {
+			So(addr.String(), ShouldEqual, fmt.Sprintf("%v[%d:%d]", addr.Ptr, addr.Len, addr.Cap))
 		})
 	})
 }
@@ -747,17 +756,41 @@ func TestSlice_Slice_Performance(t *testing.T) {
 func TestSlice_Format(t *testing.T) {
 	Convey("Given a slice", t, func() {
 		a := &arena.Arena{}
-		s := slice.Make[int](a, 3)
 
-		// Store some values
-		s.Store(0, 100)
-		s.Store(1, 200)
-		s.Store(2, 300)
+		Convey("When formatting slice with data", func() {
+			s := slice.Of(a, 1, 2, 3)
 
-		Convey("When formatting slice", func() {
 			// This should not panic
 			So(func() {
 				_ = s.Raw()
+			}, ShouldNotPanic)
+		})
+
+		Convey("When formatting empty slice", func() {
+			s := slice.Make[int](a, 0)
+
+			So(func() {
+				_ = s.Raw()
+			}, ShouldNotPanic)
+		})
+
+		Convey("When formatting nil slice", func() {
+			var s slice.Slice[int]
+
+			So(func() {
+				_ = s.Raw()
+			}, ShouldNotPanic)
+		})
+
+		Convey("When formatting slice with different types", func() {
+			stringSlice := slice.Of(a, "hello", "world")
+			So(func() {
+				_ = stringSlice.Raw()
+			}, ShouldNotPanic)
+
+			floatSlice := slice.Of(a, 1.5, 2.7)
+			So(func() {
+				_ = floatSlice.Raw()
 			}, ShouldNotPanic)
 		})
 	})
@@ -1239,6 +1272,595 @@ func TestSlice_ErrorHandling(t *testing.T) {
 			s = s.Append(a, 1, 2, 3)
 			So(s.Len(), ShouldEqual, 3)
 			So(s.Load(0), ShouldEqual, 1)
+		})
+	})
+}
+
+// TestSlice_FromBytes tests the FromBytes function
+func TestSlice_FromBytes(t *testing.T) {
+	Convey("Given an arena", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When creating slice from bytes", func() {
+			data := []byte{1, 2, 3, 4, 5}
+			s := slice.FromBytes(a, data)
+
+			So(s.Len(), ShouldEqual, 5)
+			So(s.Cap(), ShouldBeGreaterThanOrEqualTo, 5)
+			So(s.Ptr(), ShouldNotBeNil)
+
+			// Verify values
+			for i, expected := range data {
+				So(s.Load(i), ShouldEqual, expected)
+			}
+		})
+
+		Convey("When creating slice from empty bytes", func() {
+			s := slice.FromBytes(a, []byte{})
+
+			So(s.Len(), ShouldEqual, 0)
+			So(s.Cap(), ShouldBeGreaterThanOrEqualTo, 0)
+		})
+
+		Convey("When creating slice from nil bytes", func() {
+			s := slice.FromBytes(a, nil)
+
+			So(s.Len(), ShouldEqual, 0)
+			So(s.Cap(), ShouldBeGreaterThanOrEqualTo, 0)
+		})
+
+		Convey("When creating slice from large byte array", func() {
+			data := make([]byte, 1000)
+			for i := range data {
+				data[i] = byte(i % 256)
+			}
+
+			s := slice.FromBytes(a, data)
+			So(s.Len(), ShouldEqual, 1000)
+			So(s.Cap(), ShouldBeGreaterThanOrEqualTo, 1000)
+
+			// Verify first and last values
+			So(s.Load(0), ShouldEqual, 0)
+			So(s.Load(999), ShouldEqual, 231) // 999 % 256
+		})
+	})
+}
+
+// TestSlice_FromString tests the FromString function
+func TestSlice_FromString(t *testing.T) {
+	Convey("Given an arena", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When creating slice from string", func() {
+			str := "hello world"
+			s := slice.FromString(a, str)
+
+			So(s.Len(), ShouldEqual, 11)
+			So(s.Cap(), ShouldBeGreaterThanOrEqualTo, 11)
+			So(s.Ptr(), ShouldNotBeNil)
+
+			// Verify values
+			for i, expected := range []byte(str) {
+				So(s.Load(i), ShouldEqual, expected)
+			}
+		})
+
+		Convey("When creating slice from empty string", func() {
+			s := slice.FromString(a, "")
+
+			So(s.Len(), ShouldEqual, 0)
+			So(s.Cap(), ShouldBeGreaterThanOrEqualTo, 0)
+		})
+
+		Convey("When creating slice from unicode string", func() {
+			str := "你好世界"
+			s := slice.FromString(a, str)
+
+			So(s.Len(), ShouldEqual, 12) // UTF-8 encoding
+			So(s.Cap(), ShouldBeGreaterThanOrEqualTo, 12)
+		})
+
+		Convey("When creating slice from string with special characters", func() {
+			str := "Hello\n\tWorld\r\n"
+			s := slice.FromString(a, str)
+
+			So(s.Len(), ShouldEqual, 14) // "Hello\n\tWorld\r\n" = 14 bytes
+			So(s.Load(5), ShouldEqual, byte('\n'))
+			So(s.Load(6), ShouldEqual, byte('\t'))
+		})
+	})
+}
+
+// TestSlice_Wrap tests the Wrap function
+func TestSlice_Wrap(t *testing.T) {
+	Convey("Given a Go slice", t, func() {
+		Convey("When wrapping non-empty slice", func() {
+			data := []int{1, 2, 3, 4, 5}
+			s := slice.Wrap(data)
+
+			So(s.Len(), ShouldEqual, 5)
+			So(s.Cap(), ShouldEqual, 5)
+			So(s.Ptr(), ShouldNotBeNil)
+
+			// Verify values
+			for i, expected := range data {
+				So(s.Load(i), ShouldEqual, expected)
+			}
+
+			// Verify that modifying the original affects the wrapped slice
+			data[0] = 999
+			So(s.Load(0), ShouldEqual, 999)
+		})
+
+		Convey("When wrapping empty slice", func() {
+			var data []int
+			s := slice.Wrap(data)
+
+			So(s.Len(), ShouldEqual, 0)
+			So(s.Cap(), ShouldEqual, 0)
+		})
+
+		Convey("When wrapping nil slice", func() {
+			var data []int
+			s := slice.Wrap(data)
+
+			So(s.Len(), ShouldEqual, 0)
+			So(s.Cap(), ShouldEqual, 0)
+		})
+
+		Convey("When wrapping slice with capacity greater than length", func() {
+			data := make([]int, 3, 10)
+			data[0], data[1], data[2] = 1, 2, 3
+
+			s := slice.Wrap(data)
+			So(s.Len(), ShouldEqual, 3)
+			So(s.Cap(), ShouldEqual, 10)
+		})
+
+		Convey("When wrapping string slice", func() {
+			data := []string{"hello", "world"}
+			s := slice.Wrap(data)
+
+			So(s.Len(), ShouldEqual, 2)
+			So(s.Load(0), ShouldEqual, "hello")
+			So(s.Load(1), ShouldEqual, "world")
+		})
+	})
+}
+
+// TestSlice_Clone tests the Clone function
+func TestSlice_Clone(t *testing.T) {
+	Convey("Given a slice", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When cloning non-empty slice", func() {
+			original := slice.Of(a, 1, 2, 3, 4, 5)
+			cloned := original.Clone(a)
+
+			So(cloned.Len(), ShouldEqual, original.Len())
+			So(cloned.Cap(), ShouldBeGreaterThanOrEqualTo, original.Len())
+			So(cloned.Ptr(), ShouldNotBeNil)
+
+			// Verify values are copied
+			for i := 0; i < original.Len(); i++ {
+				So(cloned.Load(i), ShouldEqual, original.Load(i))
+			}
+
+			// Verify that modifying original doesn't affect clone
+			original.Store(0, 999)
+			So(cloned.Load(0), ShouldEqual, 1)
+		})
+
+		Convey("When cloning empty slice", func() {
+			original := slice.Make[int](a, 0)
+			cloned := slice.Clone(a, original)
+
+			So(cloned.Len(), ShouldEqual, 0)
+			So(cloned.Cap(), ShouldBeGreaterThanOrEqualTo, 0)
+		})
+
+		Convey("When cloning nil slice", func() {
+			var original slice.Slice[int]
+			cloned := slice.Clone(a, original)
+
+			So(cloned.Len(), ShouldEqual, 0)
+			So(cloned.Cap(), ShouldEqual, 0)
+		})
+
+		Convey("When cloning slice with custom struct", func() {
+			type Person struct {
+				Name string
+				Age  int
+			}
+
+			original := slice.Of(a, Person{Name: "Alice", Age: 30}, Person{Name: "Bob", Age: 25})
+			cloned := slice.Clone(a, original)
+
+			So(cloned.Len(), ShouldEqual, 2)
+			So(cloned.Load(0).Name, ShouldEqual, "Alice")
+			So(cloned.Load(0).Age, ShouldEqual, 30)
+			So(cloned.Load(1).Name, ShouldEqual, "Bob")
+			So(cloned.Load(1).Age, ShouldEqual, 25)
+		})
+	})
+}
+
+// TestSlice_Prepend tests the Prepend function
+func TestSlice_Prepend(t *testing.T) {
+	Convey("Given a slice", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When prepending elements", func() {
+			s := slice.Of(a, 3, 4, 5)
+			s = s.Prepend(a, 1, 2)
+
+			So(s.Len(), ShouldEqual, 5)
+			So(s.Load(0), ShouldEqual, 1)
+			So(s.Load(1), ShouldEqual, 2)
+			So(s.Load(2), ShouldEqual, 3)
+			So(s.Load(3), ShouldEqual, 4)
+			So(s.Load(4), ShouldEqual, 5)
+		})
+
+		Convey("When prepending to empty slice", func() {
+			s := slice.Make[int](a, 0)
+			s = s.Prepend(a, 1, 2, 3)
+
+			So(s.Len(), ShouldEqual, 3)
+			So(s.Load(0), ShouldEqual, 1)
+			So(s.Load(1), ShouldEqual, 2)
+			So(s.Load(2), ShouldEqual, 3)
+		})
+
+		Convey("When prepending single element", func() {
+			s := slice.Of(a, 2, 3)
+			s = s.Prepend(a, 1)
+
+			So(s.Len(), ShouldEqual, 3)
+			So(s.Load(0), ShouldEqual, 1)
+			So(s.Load(1), ShouldEqual, 2)
+			So(s.Load(2), ShouldEqual, 3)
+		})
+
+		Convey("When prepending many elements", func() {
+			s := slice.Of(a, 100, 101)
+			elements := make([]int, 50)
+			for i := range elements {
+				elements[i] = i
+			}
+
+			s = s.Prepend(a, elements...)
+			So(s.Len(), ShouldEqual, 52)
+
+			// Verify first few prepended elements
+			So(s.Load(0), ShouldEqual, 0)
+			So(s.Load(49), ShouldEqual, 49)
+			// Verify original elements are still there
+			So(s.Load(50), ShouldEqual, 100)
+			So(s.Load(51), ShouldEqual, 101)
+		})
+
+		Convey("When prepending string elements", func() {
+			s := slice.Of(a, "world")
+			s = s.Prepend(a, "hello")
+
+			So(s.Len(), ShouldEqual, 2)
+			So(s.Load(0), ShouldEqual, "hello")
+			So(s.Load(1), ShouldEqual, "world")
+		})
+	})
+}
+
+// TestSlice_EqualTo tests the EqualTo function
+func TestSlice_EqualTo(t *testing.T) {
+	Convey("Given a slice and a Go slice", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When comparing equal slices", func() {
+			arenaSlice := slice.Of(a, 1, 2, 3)
+			goSlice := []int{1, 2, 3}
+
+			So(slice.EqualTo(arenaSlice, goSlice), ShouldBeTrue)
+		})
+
+		Convey("When comparing different slices", func() {
+			arenaSlice := slice.Of(a, 1, 2, 3)
+			goSlice := []int{1, 2, 4}
+
+			So(slice.EqualTo(arenaSlice, goSlice), ShouldBeFalse)
+		})
+
+		Convey("When comparing slices with different lengths", func() {
+			arenaSlice := slice.Of(a, 1, 2, 3)
+			goSlice := []int{1, 2}
+
+			So(slice.EqualTo(arenaSlice, goSlice), ShouldBeFalse)
+		})
+
+		Convey("When comparing empty slices", func() {
+			arenaSlice := slice.Make[int](a, 0)
+			goSlice := []int{}
+
+			So(slice.EqualTo(arenaSlice, goSlice), ShouldBeTrue)
+		})
+
+		Convey("When comparing with nil Go slice", func() {
+			arenaSlice := slice.Make[int](a, 0)
+			var goSlice []int
+
+			So(slice.EqualTo(arenaSlice, goSlice), ShouldBeTrue)
+		})
+	})
+}
+
+// TestSlice_HasPrefix tests the HasPrefix function
+func TestSlice_HasPrefix(t *testing.T) {
+	Convey("Given a slice and a prefix", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When slice has the prefix", func() {
+			arenaSlice := slice.Of(a, 1, 2, 3, 4, 5)
+			prefix := []int{1, 2, 3}
+
+			So(slice.HasPrefix(arenaSlice, prefix), ShouldBeTrue)
+		})
+
+		Convey("When slice doesn't have the prefix", func() {
+			arenaSlice := slice.Of(a, 1, 2, 3, 4, 5)
+			prefix := []int{1, 2, 4}
+
+			So(slice.HasPrefix(arenaSlice, prefix), ShouldBeFalse)
+		})
+
+		Convey("When prefix is longer than slice", func() {
+			arenaSlice := slice.Of(a, 1, 2)
+			prefix := []int{1, 2, 3}
+
+			So(slice.HasPrefix(arenaSlice, prefix), ShouldBeFalse)
+		})
+
+		Convey("When prefix is empty", func() {
+			arenaSlice := slice.Of(a, 1, 2, 3)
+			prefix := []int{}
+
+			So(slice.HasPrefix(arenaSlice, prefix), ShouldBeTrue)
+		})
+
+		Convey("When slice is empty", func() {
+			arenaSlice := slice.Make[int](a, 0)
+			prefix := []int{1, 2}
+
+			So(slice.HasPrefix(arenaSlice, prefix), ShouldBeFalse)
+		})
+
+		Convey("When both are empty", func() {
+			arenaSlice := slice.Make[int](a, 0)
+			prefix := []int{}
+
+			So(slice.HasPrefix(arenaSlice, prefix), ShouldBeTrue)
+		})
+	})
+}
+
+// TestSlice_Release tests the Release function
+func TestSlice_Release(t *testing.T) {
+	Convey("Given a slice", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When releasing a slice", func() {
+			s := slice.Make[int](a, 100)
+			initialPtr := s.Ptr()
+
+			// Store some values
+			for i := 0; i < 100; i++ {
+				s.Store(i, i)
+			}
+
+			// Release the slice
+			s.Release(a)
+
+			// After release, the slice should still be valid for reading
+			// but the memory has been returned to the arena
+			So(s.Ptr(), ShouldEqual, initialPtr)
+			So(s.Len(), ShouldEqual, 100)
+			// Note: Capacity might change after release due to arena management
+			So(s.Cap(), ShouldBeGreaterThanOrEqualTo, 100)
+
+			// Verify that we can still read the values after release
+			// Note: The actual values might change after release, so we just check that we can read
+			val0 := s.Load(0)
+			val99 := s.Load(99)
+			So(val0, ShouldBeGreaterThanOrEqualTo, 0)
+			So(val99, ShouldBeGreaterThanOrEqualTo, 0)
+		})
+
+		Convey("When releasing an empty slice", func() {
+			s := slice.Make[int](a, 0)
+			s.Release(a)
+
+			So(s.Len(), ShouldEqual, 0)
+			So(s.Cap(), ShouldEqual, 0)
+		})
+
+		Convey("When releasing a nil slice", func() {
+			var s slice.Slice[int]
+			s.Release(a)
+
+			So(s.Len(), ShouldEqual, 0)
+			So(s.Cap(), ShouldEqual, 0)
+		})
+	})
+}
+
+// TestSlice_Concurrency tests concurrent access to slices
+func TestSlice_Concurrency(t *testing.T) {
+	Convey("Given concurrent access scenarios", t, func() {
+		Convey("When multiple goroutines read from the same slice", func() {
+			a := &arena.Arena{}
+			s := slice.Make[int](a, 1000)
+			for i := 0; i < 1000; i++ {
+				s.Store(i, i)
+			}
+
+			// Launch multiple goroutines to read from the slice
+			done := make(chan bool, 10)
+			errors := make(chan error, 10)
+
+			for i := 0; i < 10; i++ {
+				go func(id int) {
+					defer func() { done <- true }()
+
+					// Read from different parts of the slice
+					start := id * 100
+					end := start + 100
+
+					for j := start; j < end; j++ {
+						val := s.Load(j)
+						if val != j {
+							errors <- fmt.Errorf("expected %d, got %d at index %d", j, val, j)
+							return
+						}
+					}
+				}(i)
+			}
+
+			// Wait for all goroutines to complete
+			for i := 0; i < 10; i++ {
+				<-done
+			}
+
+			// Check for any errors
+			close(errors)
+			for err := range errors {
+				t.Errorf("Concurrency test failed: %v", err)
+			}
+		})
+
+		Convey("When multiple goroutines append to different slices", func() {
+			// Create separate arenas for each goroutine to avoid data races
+			slices := make([]slice.Slice[int], 10)
+			arenas := make([]*arena.Arena, 10)
+
+			// Pre-allocate slices in separate arenas
+			for i := range slices {
+				arenas[i] = &arena.Arena{}
+				slices[i] = slice.Make[int](arenas[i], 0)
+			}
+
+			// Launch goroutines to append to different slices
+			done := make(chan bool, 10)
+
+			for i := 0; i < 10; i++ {
+				go func(id int) {
+					defer func() { done <- true }()
+
+					// Append 100 elements to this slice
+					for j := 0; j < 100; j++ {
+						slices[id] = slices[id].AppendOne(arenas[id], id*100+j)
+					}
+				}(i)
+			}
+
+			// Wait for all goroutines to complete
+			for i := 0; i < 10; i++ {
+				<-done
+			}
+
+			// Verify all slices have the expected content
+			for i := 0; i < 10; i++ {
+				So(slices[i].Len(), ShouldEqual, 100)
+				// Check first and last elements to verify correct content
+				first := slices[i].Load(0)
+				last := slices[i].Load(99)
+				So(first, ShouldEqual, i*100)
+				So(last, ShouldEqual, i*100+99)
+			}
+		})
+	})
+}
+
+// TestSlice_TypeSafety tests type safety of generic slices
+func TestSlice_TypeSafety(t *testing.T) {
+	Convey("Given type safety scenarios", t, func() {
+		a := &arena.Arena{}
+
+		Convey("When working with different numeric types", func() {
+			// Test int slices
+			intSlice := slice.Of(a, 1, 2, 3)
+			So(intSlice.Len(), ShouldEqual, 3)
+			So(intSlice.Load(0), ShouldEqual, 1)
+
+			// Test float64 slices
+			floatSlice := slice.Of(a, 1.1, 2.2, 3.3)
+			So(floatSlice.Len(), ShouldEqual, 3)
+			So(floatSlice.Load(0), ShouldEqual, 1.1)
+
+			// Test byte slices
+			byteSlice := slice.Of(a, byte('a'), byte('b'), byte('c'))
+			So(byteSlice.Len(), ShouldEqual, 3)
+			So(byteSlice.Load(0), ShouldEqual, byte('a'))
+		})
+
+		Convey("When working with complex types", func() {
+			type Complex struct {
+				Real      float64
+				Imaginary float64
+			}
+
+			complexSlice := slice.Of(a, Complex{1.0, 2.0}, Complex{3.0, 4.0})
+			So(complexSlice.Len(), ShouldEqual, 2)
+			So(complexSlice.Load(0).Real, ShouldEqual, 1.0)
+			So(complexSlice.Load(0).Imaginary, ShouldEqual, 2.0)
+		})
+
+		Convey("When working with interface types", func() {
+			interfaceSlice := slice.Of[interface{}](a, "string", 42, true, 3.14)
+
+			So(interfaceSlice.Len(), ShouldEqual, 4)
+			So(interfaceSlice.Load(0), ShouldEqual, "string")
+			So(interfaceSlice.Load(1), ShouldEqual, 42)
+			So(interfaceSlice.Load(2), ShouldEqual, true)
+			So(interfaceSlice.Load(3), ShouldEqual, 3.14)
+		})
+	})
+}
+
+// TestSlice_ZeroValue tests behavior with zero values
+func TestSlice_ZeroValue(t *testing.T) {
+	Convey("Given zero value scenarios", t, func() {
+		Convey("When working with zero value slice", func() {
+			var s slice.Slice[int]
+
+			So(s.Len(), ShouldEqual, 0)
+			So(s.Cap(), ShouldEqual, 0)
+			So(s.Empty(), ShouldBeTrue)
+			So(s.Ptr(), ShouldBeNil)
+
+			// Test that we can still call methods on zero value
+			a := &arena.Arena{}
+			s = s.Append(a, 1, 2, 3)
+			So(s.Len(), ShouldEqual, 3)
+			So(s.Load(0), ShouldEqual, 1)
+		})
+
+		Convey("When working with zero value of different types", func() {
+			var intSlice slice.Slice[int]
+			var stringSlice slice.Slice[string]
+			var byteSlice slice.Slice[byte]
+
+			So(intSlice.Len(), ShouldEqual, 0)
+			So(stringSlice.Len(), ShouldEqual, 0)
+			So(byteSlice.Len(), ShouldEqual, 0)
+		})
+
+		Convey("When comparing zero value slices", func() {
+			var s1, s2 slice.Slice[int]
+			So(slice.Equal(s1, s2), ShouldBeTrue)
+			So(slice.Equal(s1, s1), ShouldBeTrue)
+
+			var s3 slice.Slice[string]
+			var s4 slice.Slice[string]
+			So(slice.Equal(s3, s4), ShouldBeTrue)
 		})
 	})
 }

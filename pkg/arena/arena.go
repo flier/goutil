@@ -341,7 +341,7 @@ const Align = int(unsafe.Sizeof(uintptr(0)))
 func New[T any](a Allocator, value T) *T {
 	layout := layout.Of[T]()
 	if layout.Align > Align {
-		panic("hyperpb: over-aligned object")
+		panic("over-aligned object")
 	}
 
 	p := xunsafe.Cast[T](a.Alloc(layout.Size))

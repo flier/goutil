@@ -29,16 +29,16 @@ func ExampleMapFunc() {
 	// Output: [1 4 9]
 }
 
-func ExampleMap2() {
+func ExampleMapValue() {
 	s := slices.All([]string{"foo", "bar", "hello", "world"})
-	m := Map2(s, func(n int, v string) int { return len(v) })
+	m := MapValue(s, func(n int, v string) int { return len(v) })
 
 	fmt.Println(maps.Collect(m))
 	// Output: map[0:3 1:3 2:5 3:5]
 }
 
-func ExampleMap2Func() {
-	lengthOfValue := Map2Func(func(n int, v string) int { return len(v) })
+func ExampleMapValueFunc() {
+	lengthOfValue := MapValueFunc(func(n int, v string) int { return len(v) })
 
 	s := slices.All([]string{"foo", "bar", "hello", "world"})
 	m := lengthOfValue(s)

@@ -1,7 +1,11 @@
-package arena
+//go:build go1.22
+
+package arena_test
 
 import (
 	"testing"
+
+	. "github.com/flier/goutil/pkg/arena"
 )
 
 // BenchmarkRecycled_Release benchmarks Recycled release performance
@@ -15,6 +19,7 @@ func BenchmarkRecycled_Release(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		arena.Release(pointers[i], 64)
 	}
@@ -26,6 +31,7 @@ func BenchmarkRecycled_MultipleRecycling(b *testing.B) {
 	sizes := []int{64, 128, 256, 512, 1024}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		// Allocate a set of blocks
 		ptrs := make([]*byte, len(sizes))

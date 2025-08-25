@@ -7,7 +7,7 @@ import (
 	"github.com/flier/goutil/pkg/arena/slice"
 )
 
-func RecursiveInsert[T any](a *arena.Arena, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
+func RecursiveInsert[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
 	// If the ref is empty, we need to inject a leaf
 	if ref.Empty() {
 		ref.Replace(leaf)
@@ -30,7 +30,7 @@ func RecursiveInsert[T any](a *arena.Arena, ref *node.Ref[T], leaf *node.Leaf[T]
 //   - If the leaf does not match the key, we need to split the leaf into a node4.
 //
 // Do not use this method directly, use [RecursiveInsert] instead.
-func InsertToLeaf[T any](a *arena.Arena, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
+func InsertToLeaf[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
 	debug.Assert(ref.IsLeaf(), "current node must be a leaf")
 
 	curr := ref.AsLeaf()
@@ -73,7 +73,7 @@ func InsertToLeaf[T any](a *arena.Arena, ref *node.Ref[T], leaf *node.Leaf[T], d
 // Returns the old value if the key matches the existing key, or nil if the key is inserted.
 //
 // Do not use this method directly, use [RecursiveInsert] instead.
-func InsertToNode[T any](a *arena.Arena, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
+func InsertToNode[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
 	debug.Assert(ref.IsNode(), "current node must be a node")
 
 	// If the ref is a node, we need to split the node into a node4

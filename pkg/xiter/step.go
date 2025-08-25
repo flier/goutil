@@ -44,6 +44,6 @@ func StepBy2[K, V any](x iter.Seq2[K, V], n int) iter.Seq2[K, V] {
 }
 
 // StepBy2Func creates an iterator starting at the same point, but stepping by the given amount at each iteration.
-func StepBy2Func[K, V any](n int) Mapping2Func[K, V, V] {
+func StepBy2Func[K, V any](n int) MappingValueFunc[K, V, V] {
 	return bind2(StepBy2[K, V], n)
 }

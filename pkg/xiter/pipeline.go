@@ -19,15 +19,15 @@ func PipelineFunc[T any](x ...Mapper[T, T]) MappingFunc[T, T] {
 }
 
 // Pipeline2 applies the given Mapper functors to the input sequence in order.
-func Pipeline2[K, V any](s iter.Seq2[K, V], x ...Mapper2[K, V, V]) iter.Seq2[K, V] {
+func Pipeline2[K, V any](s iter.Seq2[K, V], x ...ValueMapper[K, V, V]) iter.Seq2[K, V] {
 	for _, m := range x {
-		s = m.Map2(s)
+		s = m.MapValue(s)
 	}
 
 	return s
 }
 
 // Pipeline2Func applies the given Mapper functors to the input sequence in order.
-func Pipeline2Func[K, V any](x ...Mapper2[K, V, V]) Mapping2Func[K, V, V] {
+func Pipeline2Func[K, V any](x ...ValueMapper[K, V, V]) MappingValueFunc[K, V, V] {
 	return bind2rest(Pipeline2[K, V], x)
 }

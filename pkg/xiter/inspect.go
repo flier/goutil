@@ -50,6 +50,6 @@ func Inspect2[K, V any](x iter.Seq2[K, V], opts ...inspect.Option) iter.Seq2[K, 
 }
 
 // Inspect2Func inspects and writes the given item to the standard output.
-func Inspect2Func[K, V any](opts ...inspect.Option) Mapping2Func[K, V, V] {
+func Inspect2Func[K, V any](opts ...inspect.Option) MappingValueFunc[K, V, V] {
 	return bind2rest(Inspect2[K, V], opts)
 }

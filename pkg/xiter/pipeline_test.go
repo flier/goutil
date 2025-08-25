@@ -38,7 +38,7 @@ func ExamplePipelineFunc() {
 func ExamplePipeline2() {
 	r := Pipeline2(slices.All([]int{1, 2, 3, 4, 5}),
 		Filter2Func(func(i, x int) bool { return i%2 == 0 }),
-		Map2Func(func(i, x int) int { return x * 2 }))
+		MapValueFunc(func(i, x int) int { return x * 2 }))
 
 	fmt.Println(maps.Collect(r))
 
@@ -49,7 +49,7 @@ func ExamplePipeline2() {
 func ExamplePipeline2Func() {
 	p := Pipeline2Func(
 		Filter2Func(func(i, x int) bool { return i%2 == 0 }),
-		Map2Func(func(i, x int) int { return x * 2 }))
+		MapValueFunc(func(i, x int) int { return x * 2 }))
 
 	s := slices.All([]int{1, 2, 3, 4, 5})
 	r := p(s)

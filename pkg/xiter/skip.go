@@ -44,7 +44,7 @@ func Skip2[K, V any](x iter.Seq2[K, V], n int) iter.Seq2[K, V] {
 }
 
 // Skip2Func creates an iterator that skips the first n key-value.
-func Skip2Func[K, V any](n int) Mapping2Func[K, V, V] {
+func Skip2Func[K, V any](n int) MappingValueFunc[K, V, V] {
 	return bind2(Skip2[K, V], n)
 }
 
@@ -84,6 +84,6 @@ func SkipWhile2[K, V any](x iter.Seq2[K, V], f func(K, V) bool) iter.Seq2[K, V] 
 }
 
 // SkipWhile2Func creates an iterator that skips elements based on a predicate f.
-func SkipWhile2Func[K, V any](f func(K, V) bool) Mapping2Func[K, V, V] {
+func SkipWhile2Func[K, V any](f func(K, V) bool) MappingValueFunc[K, V, V] {
 	return bind2(SkipWhile2, f)
 }

@@ -1,3 +1,5 @@
+//go:build go1.20
+
 package slice
 
 import (
@@ -20,6 +22,9 @@ type Slice[T any] struct {
 	len, cap uint32
 }
 
+// Static assert that the size of Slice[T] is 16 bytes.
+var _ [16]byte = [unsafe.Sizeof(Slice[byte]{})]byte{}
+
 // FromBytes allocates a slice for the given bytes.
 func FromBytes(a arena.Allocator, b []byte) Slice[byte] {
 	return Of(a, b...)
@@ -33,6 +38,31 @@ func FromString(a arena.Allocator, s string) Slice[byte] {
 // FromParts assembles a slice from its raw components.
 func FromParts[T any](ptr *T, len, cap uint32) Slice[T] {
 	return Slice[T]{ptr, len, cap}
+}
+
+// Wrap creates a Slice[T] from an existing Go slice without copying or allocating memory.
+//
+// This function wraps an existing Go slice into the arena slice type, allowing it to be used
+// with arena-related functions. The returned slice shares the same underlying memory as the
+// input slice, so any modifications to the input slice will be reflected in the returned slice.
+//
+// Parameters:
+//   - s: The Go slice to wrap.
+//
+// Returns:
+//   - A Slice[T] that wraps the input slice without copying data.
+//
+// Example:
+//
+//	goSlice := []int{1, 2, 3, 4, 5}
+//	arenaSlice := slice.Wrap(goSlice)
+//	// arenaSlice now wraps goSlice without copying
+func Wrap[T any](s []T) Slice[T] {
+	if len(s) == 0 {
+		return Slice[T]{}
+	}
+
+	return Slice[T]{xunsafe.Cast[T](unsafe.SliceData(s)), uint32(len(s)), uint32(cap(s))}
 }
 
 // Of allocates a slice for the given values.
@@ -100,6 +130,23 @@ func EqualTo[T comparable](a Slice[T], b []T) bool {
 	}
 
 	for i := 0; i < a.Len(); i++ {
+		if a.unsafeLoad(i) != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// HasPrefix checks if a has the given prefix.
+//
+//go:nosplit
+func HasPrefix[T comparable](a Slice[T], b []T) bool {
+	if a.Len() < len(b) {
+		return false
+	}
+
+	for i := 0; i < len(b); i++ {
 		if a.unsafeLoad(i) != b[i] {
 			return false
 		}
@@ -200,6 +247,10 @@ func (s Slice[T]) Store(n int, v T) {
 //
 // The return value of this function must never escape outside of this module.
 func (s Slice[T]) Raw() []T {
+	if s.ptr == nil || s.len == 0 {
+		return nil
+	}
+
 	return unsafe.Slice(s.Ptr(), s.cap)[:s.len]
 }
 

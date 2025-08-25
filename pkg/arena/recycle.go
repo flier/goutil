@@ -212,7 +212,7 @@ func (a *Recycled) Alloc(size int) *byte {
 //
 // Do not use this method directly, use [Free] instead.
 func (a *Recycled) Release(p *byte, size int) {
-	if size < Align {
+	if p == nil || size < Align {
 		return
 	}
 

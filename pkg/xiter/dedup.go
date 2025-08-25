@@ -109,6 +109,6 @@ func DedupByKey2[K, V any, B comparable](x iter.Seq2[K, V], f func(K, V) B) iter
 }
 
 // DedupByKey2Func creates an iterator that only emits elements if they are different from the last emitted element.
-func DedupByKey2Func[K, V any, B comparable](f func(K, V) B) Mapping2Func[K, V, V] {
+func DedupByKey2Func[K, V any, B comparable](f func(K, V) B) MappingValueFunc[K, V, V] {
 	return bind2(DedupByKey2, f)
 }

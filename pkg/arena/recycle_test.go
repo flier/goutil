@@ -1,10 +1,14 @@
-package arena
+//go:build go1.22
+
+package arena_test
 
 import (
 	"testing"
 	"unsafe"
 
 	. "github.com/smartystreets/goconvey/convey"
+
+	. "github.com/flier/goutil/pkg/arena"
 )
 
 // Test data structures for better test organization

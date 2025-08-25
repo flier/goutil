@@ -4,22 +4,37 @@ package xiter
 
 import "iter"
 
+// Mapper maps a sequence of values of type T to a sequence of values of type O.
 type Mapper[T, O any] interface {
 	Map(iter.Seq[T]) iter.Seq[O]
 }
 
-type Mapper2[K, V, O any] interface {
-	Map2(iter.Seq2[K, V]) iter.Seq2[K, O]
+// KeyMapper maps a sequence of key-value pairs of type [K, V] to a sequence of key-value pairs of type [O, V].
+type KeyMapper[K, V, O any] interface {
+	MapKey(iter.Seq2[K, V]) iter.Seq2[O, V]
 }
 
+// ValueMapper maps a sequence of key-value pairs of type [K, V] to a sequence of key-value pairs of type [K, O].
+type ValueMapper[K, V, O any] interface {
+	MapValue(iter.Seq2[K, V]) iter.Seq2[K, O]
+}
+
+// KeyValueMapper maps a sequence of key-value pairs of type [K, V] to a sequence of key-value pairs of type [O, P].
+type KeyValueMapper[K, V, O, P any] interface {
+	MapKeyValue(iter.Seq2[K, V]) iter.Seq2[O, P]
+}
+
+// Reducer reduces a sequence of values of type T to a single value of type B.
 type Reducer[T, B any] interface {
 	Reduce(iter.Seq[T]) B
 }
 
+// Reducer2 reduces a sequence of key-value pairs of type [K, V] to a single value of type B.
 type Reducer2[K, V, B any] interface {
 	Reduce2(iter.Seq2[K, V]) B
 }
 
+// Comparer compares two sequence of values of type T and returns an integer.
 type Comparer[T any] interface {
 	Compare(iter.Seq[T], iter.Seq[T]) int
 }
@@ -31,12 +46,26 @@ var _ Mapper[int, int] = MappingFunc[int, int](nil)
 
 func (f MappingFunc[T, O]) Map(s iter.Seq[T]) iter.Seq[O] { return f(s) }
 
-// Mapping2Func is a functor that maps a sequence of key-value pairs of type [K, V] to a sequence of key-value pairs of type [K, O].
-type Mapping2Func[K, V, O any] func(iter.Seq2[K, V]) iter.Seq2[K, O]
+// MappingKeyValueFunc is a functor that maps a sequence of key-value pairs of type [K, V] to a sequence of key-value pairs of type [O, P].
+type MappingKeyValueFunc[K, V, O, P any] func(iter.Seq2[K, V]) iter.Seq2[O, P]
 
-var _ Mapper2[int, int, int] = Mapping2Func[int, int, int](nil)
+var _ KeyValueMapper[string, int, bool, rune] = MappingKeyValueFunc[string, int, bool, rune](nil)
 
-func (f Mapping2Func[K, V, O]) Map2(s iter.Seq2[K, V]) iter.Seq2[K, O] { return f(s) }
+func (f MappingKeyValueFunc[K, V, O, P]) MapKeyValue(s iter.Seq2[K, V]) iter.Seq2[O, P] { return f(s) }
+
+// MappingKeyFunc is a functor that maps a sequence of key-value pairs of type [K, V] to a sequence of key-value pairs of type [O, V].
+type MappingKeyFunc[K, V, O any] func(iter.Seq2[K, V]) iter.Seq2[O, V]
+
+var _ KeyMapper[string, int, bool] = MappingKeyFunc[string, int, bool](nil)
+
+func (f MappingKeyFunc[K, V, O]) MapKey(s iter.Seq2[K, V]) iter.Seq2[O, V] { return f(s) }
+
+// MappingValueFunc is a functor that maps a sequence of key-value pairs of type [K, V] to a sequence of key-value pairs of type [K, O].
+type MappingValueFunc[K, V, O any] func(iter.Seq2[K, V]) iter.Seq2[K, O]
+
+var _ ValueMapper[int, int, int] = MappingValueFunc[int, int, int](nil)
+
+func (f MappingValueFunc[K, V, O]) MapValue(s iter.Seq2[K, V]) iter.Seq2[K, O] { return f(s) }
 
 // ReductionFunc is a functor that reduces a sequence of values of type T to a single value of type B.
 type ReductionFunc[T, B any] func(iter.Seq[T]) B

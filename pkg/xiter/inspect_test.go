@@ -72,7 +72,7 @@ func ExampleInspectFunc() {
 func ExampleInspect2() {
 	s := slices.All([]string{"foo", "bar", "hello"})
 
-	lengthOf := Map2Func(func(n int, k string) int { return len(k) })
+	lengthOf := MapValueFunc(func(n int, k string) int { return len(k) })
 
 	fmt.Println(maps.Collect(lengthOf(Inspect2(s, Label("len")))))
 
@@ -84,7 +84,7 @@ func ExampleInspect2() {
 func ExampleInspect2Func() {
 	s := slices.All([]string{"foo", "bar", "hello"})
 
-	lengthOf := Map2Func(func(n int, k string) int { return len(k) })
+	lengthOf := MapValueFunc(func(n int, k string) int { return len(k) })
 	dump := Inspect2Func[int, string](Label("len"))
 
 	fmt.Println(maps.Collect(lengthOf(dump(s))))

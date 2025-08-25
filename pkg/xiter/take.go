@@ -52,7 +52,7 @@ func Take2[K, V any](x iter.Seq2[K, V], n int) iter.Seq2[K, V] {
 }
 
 // Take2Func creates an iterator that yields the first n key-values, or fewer if the underlying iterator ends sooner.
-func Take2Func[K, V any](n int) Mapping2Func[K, V, V] {
+func Take2Func[K, V any](n int) MappingValueFunc[K, V, V] {
 	return bind2(Take2[K, V], n)
 }
 
@@ -92,6 +92,6 @@ func TakeWhile2[K, V any](x iter.Seq2[K, V], f func(K, V) bool) iter.Seq2[K, V] 
 }
 
 // TakeWhile creates an iterator that yields key-values based on a predicate f.
-func TakeWhile2Func[K, V any](f func(K, V) bool) Mapping2Func[K, V, V] {
+func TakeWhile2Func[K, V any](f func(K, V) bool) MappingValueFunc[K, V, V] {
 	return bind2(TakeWhile2, f)
 }
