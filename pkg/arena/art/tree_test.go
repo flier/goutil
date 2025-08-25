@@ -568,8 +568,8 @@ func BenchmarkTree_Insert(b *testing.B) {
 }
 
 func BenchmarkTree_Search(b *testing.B) {
-	tree := &art.Tree[int]{}
 	a := new(arena.Arena)
+	tree := arena.New(a, art.Tree[int]{})
 
 	// Pre-populate tree
 	for i := 0; i < 1000; i++ {
