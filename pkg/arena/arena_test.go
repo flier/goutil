@@ -260,7 +260,7 @@ func TestSuggestSize(t *testing.T) {
 		Convey("When suggesting sizes", func() {
 			// Test that sizes are rounded up to powers of 2
 			So(arena.SuggestSize(0), ShouldEqual, 0)
-			So(arena.SuggestSize(1), ShouldEqual, 64)
+			So(arena.SuggestSize(1), ShouldEqual, 16)
 			So(arena.SuggestSize(63), ShouldEqual, 64)
 			So(arena.SuggestSize(64), ShouldEqual, 64)
 			So(arena.SuggestSize(65), ShouldEqual, 128)

@@ -9,6 +9,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 
 	. "github.com/flier/goutil/pkg/arena"
+	"github.com/flier/goutil/pkg/xunsafe"
 )
 
 // Test data structures for better test organization
@@ -67,15 +68,15 @@ func TestRecycledArena_BasicAllocation(t *testing.T) {
 					ptr := arena.Alloc(size)
 					So(ptr, ShouldNotBeNil)
 
-					addr := uintptr(unsafe.Pointer(ptr))
-					So(addr%uintptr(Align), ShouldEqual, uintptr(0))
+					addr := xunsafe.AddrOf(ptr)
+					So(int(addr)%Align, ShouldEqual, 0)
 
 					// Test write access to first and last byte
 					*ptr = 0xAA
 					So(*ptr, ShouldEqual, byte(0xAA))
 
 					if size > 1 {
-						lastByte := (*byte)(unsafe.Pointer(addr + uintptr(size-1)))
+						lastByte := addr.Add(size - 1).AssertValid()
 						*lastByte = 0xBB
 						So(*lastByte, ShouldEqual, byte(0xBB))
 					}
@@ -155,15 +156,15 @@ func TestRecycledArena_Recycling(t *testing.T) {
 					So(ptr, ShouldNotBeNil)
 
 					// Write pattern across the entire allocation
-					addr := uintptr(unsafe.Pointer(ptr))
+					addr := xunsafe.AddrOf(ptr)
 					for i := 0; i < tc.size; i++ {
-						*(*byte)(unsafe.Pointer(addr + uintptr(i))) = byte(i % 256)
+						*addr.Add(i).AssertValid() = byte(i % 256)
 					}
 
 					// Verify pattern was written
 					So(*ptr, ShouldEqual, byte(0))
 					if tc.size > 1 {
-						lastByte := *(*byte)(unsafe.Pointer(addr + uintptr(tc.size-1)))
+						lastByte := *addr.Add(tc.size - 1).AssertValid()
 						So(lastByte, ShouldEqual, byte((tc.size-1)%256))
 					}
 
@@ -1037,22 +1038,22 @@ func TestRecycledArena_FullAccess(t *testing.T) {
 				Convey("When allocating size "+string(rune(size)), func() {
 					ptr := a.Alloc(size)
 					So(ptr, ShouldNotBeNil)
-					addr := uintptr(unsafe.Pointer(ptr))
-					So(addr%uintptr(Align), ShouldEqual, uintptr(0))
+					addr := xunsafe.AddrOf(ptr)
+					So(int(addr)%Align, ShouldEqual, 0)
 
 					// Write through the entire requested segment
 					for i := 0; i < size; i++ {
-						*(*byte)(unsafe.Pointer(addr + uintptr(i))) = byte((i ^ 0x5A) & 0xFF)
+						*addr.Add(i).AssertValid() = byte((i ^ 0x5A) & 0xFF)
 					}
 
 					// Verify a few sentinel positions
 					So(*ptr, ShouldEqual, byte((0^0x5A)&0xFF))
 					mid := size / 2
 					if mid > 0 {
-						midByte := *(*byte)(unsafe.Pointer(addr + uintptr(mid)))
+						midByte := *addr.Add(mid).AssertValid()
 						So(midByte, ShouldEqual, byte((mid^0x5A)&0xFF))
 					}
-					lastByte := *(*byte)(unsafe.Pointer(addr + uintptr(size-1)))
+					lastByte := *addr.Add(size - 1).AssertValid()
 					So(lastByte, ShouldEqual, byte(((size-1)^0x5A)&0xFF))
 
 					// Release and re-allocate; for sizes < Align release is ignored,
@@ -1060,18 +1061,18 @@ func TestRecycledArena_FullAccess(t *testing.T) {
 					a.Release(ptr, size)
 					re := a.Alloc(size)
 					So(re, ShouldNotBeNil)
-					addrRe := uintptr(unsafe.Pointer(re))
+					addrRe := xunsafe.AddrOf(re)
 
 					// Fully write again across the entire segment
 					for i := 0; i < size; i++ {
-						*(*byte)(unsafe.Pointer(addrRe + uintptr(i))) = byte((i ^ 0xA5) & 0xFF)
+						*addrRe.Add(i).AssertValid() = byte((i ^ 0xA5) & 0xFF)
 					}
 					So(*re, ShouldEqual, byte((0^0xA5)&0xFF))
 					if mid > 0 {
-						midByteRe2 := *(*byte)(unsafe.Pointer(addrRe + uintptr(mid)))
+						midByteRe2 := *addrRe.Add(mid).AssertValid()
 						So(midByteRe2, ShouldEqual, byte((mid^0xA5)&0xFF))
 					}
-					lastByteRe2 := *(*byte)(unsafe.Pointer(addrRe + uintptr(size-1)))
+					lastByteRe2 := *addrRe.Add(size - 1).AssertValid()
 					So(lastByteRe2, ShouldEqual, byte(((size-1)^0xA5)&0xFF))
 				})
 			}(size)
