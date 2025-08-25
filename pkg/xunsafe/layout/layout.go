@@ -6,7 +6,11 @@
 // unsafe.
 package layout
 
-import "unsafe"
+import (
+	"unsafe"
+
+	"github.com/flier/goutil/internal/debug"
+)
 
 // Int is any integer type.
 type Int interface {
@@ -59,20 +63,43 @@ func (l Layout) Max(that Layout) Layout {
 
 // RoundDown rounds v down to a power of two.
 func RoundDown[T Int](v, align T) T {
+	debug.Assert(v >= 0, "v must be greater than 0")
+	debug.Assert(align > 0, "align must be greater than 0")
+
+	if align <= 0 {
+		return v
+	}
+
 	return v &^ (align - 1)
 }
 
 // RoundDown rounds v up to a power of two.
 func RoundUp[T Int](v, align T) T {
+	debug.Assert(v >= 0, "v must be greater than 0")
+	debug.Assert(align > 0, "align must be greater than 0")
+
+	if align <= 0 {
+		return v
+	}
+
 	return (v + align - 1) &^ (align - 1)
 }
 
 // Padding returns [RoundUp](v, align) - v.
 func Padding[T Int](v, align T) T {
+	debug.Assert(v >= 0, "v must be greater than 0")
+	debug.Assert(align > 0, "align must be greater than 0")
+
+	if align <= 0 {
+		return 0
+	}
+
 	return (align - v) & (align - 1)
 }
 
 // PadSlice appends zeros to buf until its length is a multiple of align.
 func PadSlice(buf []byte, align int) []byte {
+	debug.Assert(align > 0, "align must be greater than 0")
+
 	return append(buf, make([]byte, Padding(len(buf), align))...)
 }

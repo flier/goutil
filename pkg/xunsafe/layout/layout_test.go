@@ -222,7 +222,7 @@ func TestLayout(t *testing.T) {
 
 			Convey("And working with negative values", func() {
 				aligned := layout.RoundUp(-15, 8)
-				So(aligned, ShouldEqual, -16)
+				So(aligned, ShouldEqual, -8)
 
 				alignedDown := layout.RoundDown(-15, 8)
 				So(alignedDown, ShouldEqual, -16)
