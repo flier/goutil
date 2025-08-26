@@ -51,7 +51,7 @@ func InsertToLeaf[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T]
 
 	// If the key and the current key have a common prefix, we need to add it to the node4
 	if i := LongestCommonPrefix(leaf.Key, curr.Key, depth); i > depth {
-		newNode.Partial = leaf.Key.Slice(depth, i)
+		newNode.Partial = leaf.Key.Slice(depth, i).Clone(a)
 
 		depth = i
 	}
