@@ -324,7 +324,50 @@ func (s Slice[T]) Slice(start, end int) Slice[T] {
 	}
 }
 
-// SplitAt splits a slice at the given index.
+// SplitAt splits a slice at the given index, returning two new slices that share
+// the same underlying memory as the original slice.
+//
+// The method creates two slices:
+//   - Left slice (l): contains elements from index 0 to n (exclusive)
+//   - Right slice (r): contains elements from index n to the end
+//
+// Parameters:
+//   - n: The index at which to split the slice. Can be negative or beyond the slice length.
+//     Negative indices are interpreted as counting from the end (-1 = last element).
+//     Indices beyond the slice length are clamped to the slice length.
+//
+// Returns:
+//   - l: Left slice containing elements [0:n). Empty if n <= 0.
+//   - r: Right slice containing elements [n:len). Empty if n >= len.
+//
+// Behavior:
+//   - If n < 0: n is converted to a positive index by adding the slice length.
+//     If the result is still negative, n is clamped to 0.
+//   - If n >= len: n is clamped to len, making the right slice empty.
+//   - Both returned slices have capacity equal to their length for memory efficiency.
+//   - The slices share the same underlying memory, so modifications to the original
+//     slice will affect both parts.
+//   - If the original slice is empty, both returned slices are empty.
+//
+// Examples:
+//
+//	s := slice.Of(a, 1, 2, 3, 4, 5)
+//	left, right := s.SplitAt(2)
+//	// left: [1, 2], right: [3, 4, 5]
+//
+//	left, right := s.SplitAt(-2)
+//	// left: [1, 2, 3], right: [4, 5]
+//
+//	left, right := s.SplitAt(0)
+//	// left: [], right: [1, 2, 3, 4, 5]
+//
+//	left, right := s.SplitAt(5)
+//	// left: [1, 2, 3, 4, 5], right: []
+//
+// Memory characteristics:
+//   - O(1) time complexity - no data copying
+//   - Both slices reference the same arena memory
+//   - Capacity is set to length for both slices to prevent accidental growth
 func (s Slice[T]) SplitAt(n int) (l Slice[T], r Slice[T]) {
 	if s.len == 0 {
 		return
