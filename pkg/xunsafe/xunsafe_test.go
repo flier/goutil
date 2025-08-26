@@ -61,9 +61,5 @@ func TestXunsafeComprehensive(t *testing.T) {
 		// Test Ping
 		ptr := &i
 		xunsafe.Ping(ptr) // Should not panic
-
-		// Test NoCopy
-		var noCopy xunsafe.NoCopy
-		_ = noCopy // Use the variable to avoid unused variable warning
 	})
 }

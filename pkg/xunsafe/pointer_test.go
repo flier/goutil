@@ -113,7 +113,7 @@ func TestPointer(t *testing.T) {
 		Convey("When working with write barrier operations", func() {
 			Convey("And storing without write barriers", func() {
 				var ptr *int
-				var newPtr *int = new(int)
+				var newPtr = new(int)
 				*newPtr = 42
 
 				// Store the pointer
@@ -124,7 +124,7 @@ func TestPointer(t *testing.T) {
 
 			Convey("And storing untyped pointer without write barriers", func() {
 				var ptr unsafe.Pointer
-				var newPtr unsafe.Pointer = unsafe.Pointer(new(int))
+				var newPtr = unsafe.Pointer(new(int))
 
 				// Store the pointer
 				xunsafe.StoreNoWBUntyped(&ptr, newPtr)
