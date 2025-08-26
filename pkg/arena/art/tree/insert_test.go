@@ -798,3 +798,257 @@ func TestInsertToNode(t *testing.T) {
 		})
 	})
 }
+
+// TestRecursiveInsert_LazyExpansion tests lazy expansion behavior where inner nodes are only
+// created when they are required to distinguish between at least two leaf nodes
+func TestRecursiveInsert_LazyExpansion(t *testing.T) {
+	Convey("Given an ART tree with lazy expansion using RecursiveInsert", t, func() {
+		a := new(arena.Arena)
+
+		var root node.Ref[int]
+
+		Convey("When inserting a single key", func() {
+			leaf := node.NewLeaf(a, []byte("single"), 1)
+			RecursiveInsert(a, &root, leaf, 0, false)
+
+			Convey("Then the root should contain the leaf node", func() {
+				So(root.Empty(), ShouldBeFalse)
+				So(root.IsLeaf(), ShouldBeTrue)
+			})
+
+			Convey("Then no inner nodes should be created unnecessarily", func() {
+				// With only one key, no inner nodes are needed for distinction
+				// The tree should remain as a single leaf
+				So(root.IsLeaf(), ShouldBeTrue)
+
+				So(*Search(root, []byte("single")), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When inserting keys with no common prefix", func() {
+			leaf1 := node.NewLeaf(a, []byte("apple"), 1)
+			leaf2 := node.NewLeaf(a, []byte("zebra"), 2)
+
+			RecursiveInsert(a, &root, leaf1, 0, false)
+			RecursiveInsert(a, &root, leaf2, 0, false)
+
+			Convey("Then both keys should be inserted into the tree", func() {
+				So(root.Empty(), ShouldBeFalse)
+				// The root should now be an inner node since we have two different keys
+				So(root.IsLeaf(), ShouldBeFalse)
+			})
+
+			Convey("Then inner nodes should be created only when necessary", func() {
+				// These keys have no common prefix, so minimal inner node structure
+				// should be created to distinguish them
+				So(root.IsLeaf(), ShouldBeFalse)
+			})
+
+			Convey("Then both keys should be searchable", func() {
+				So(*Search(root, []byte("apple")), ShouldEqual, 1)
+				So(*Search(root, []byte("zebra")), ShouldEqual, 2)
+			})
+		})
+
+		Convey("When inserting keys with common prefix that requires distinction", func() {
+			leaf1 := node.NewLeaf(a, []byte("apple"), 1)
+			leaf2 := node.NewLeaf(a, []byte("apricot"), 2)
+
+			RecursiveInsert(a, &root, leaf1, 0, false)
+			RecursiveInsert(a, &root, leaf2, 0, false)
+
+			Convey("Then both keys should be inserted into the tree", func() {
+				So(root.Empty(), ShouldBeFalse)
+				// The root should be an inner node since we have two keys with common prefix
+				So(root.IsLeaf(), ShouldBeFalse)
+			})
+
+			Convey("Then both keys should be searchable", func() {
+				So(*Search(root, []byte("apple")), ShouldEqual, 1)
+				So(*Search(root, []byte("apricot")), ShouldEqual, 2)
+			})
+
+			Convey("Then inner nodes should be created to distinguish the common prefix", func() {
+				// These keys share "ap" prefix but differ at position 2
+				// Inner nodes should be created to distinguish them
+				So(root.IsLeaf(), ShouldBeFalse)
+
+				n := root.AsNode4()
+				So(n.NumChildren, ShouldEqual, 2)
+				So(n.Partial.Raw(), ShouldResemble, []byte("ap"))
+				So(n.Keys[0], ShouldEqual, byte('p'))
+				So(n.Keys[1], ShouldEqual, byte('r'))
+				So(n.Children[0], ShouldEqual, leaf1.Ref())
+				So(n.Children[1], ShouldEqual, leaf2.Ref())
+			})
+		})
+
+		Convey("When inserting keys that share a longer common prefix", func() {
+			leaf1 := node.NewLeaf(a, []byte("application"), 1)
+			leaf2 := node.NewLeaf(a, []byte("appliance"), 2)
+
+			RecursiveInsert(a, &root, leaf1, 0, false)
+			RecursiveInsert(a, &root, leaf2, 0, false)
+
+			Convey("Then both keys should be inserted into the tree", func() {
+				So(root.Empty(), ShouldBeFalse)
+				// The root should be an inner node since we have two keys with common prefix
+				So(root.IsLeaf(), ShouldBeFalse)
+			})
+
+			Convey("Then both keys should be searchable", func() {
+				So(*Search(root, []byte("application")), ShouldEqual, 1)
+				So(*Search(root, []byte("appliance")), ShouldEqual, 2)
+			})
+
+			Convey("Then inner nodes should be created only at the point of divergence", func() {
+				// These keys share "appli" prefix but differ at position 5
+				// Inner nodes should be created only where distinction is needed
+				So(root.IsLeaf(), ShouldBeFalse)
+
+				n := root.AsNode4()
+				So(n.NumChildren, ShouldEqual, 2)
+				So(n.Partial.Raw(), ShouldResemble, []byte("appli"))
+				So(n.Keys[0], ShouldEqual, byte('a'))
+				So(n.Keys[1], ShouldEqual, byte('c'))
+				So(n.Children[0], ShouldEqual, leaf2.Ref())
+				So(n.Children[1], ShouldEqual, leaf1.Ref())
+			})
+		})
+
+		Convey("When inserting keys with incremental common prefixes", func() {
+			leaf1 := node.NewLeaf(a, []byte("a"), 1)
+			leaf2 := node.NewLeaf(a, []byte("ab"), 2)
+			leaf3 := node.NewLeaf(a, []byte("abc"), 3)
+
+			RecursiveInsert(a, &root, leaf1, 0, false)
+			RecursiveInsert(a, &root, leaf2, 0, false)
+			RecursiveInsert(a, &root, leaf3, 0, false)
+
+			Convey("Then all keys should be inserted into the tree", func() {
+				So(root.Empty(), ShouldBeFalse)
+				// The root should be an inner node since we have multiple keys
+				So(root.IsLeaf(), ShouldBeFalse)
+			})
+
+			Convey("Then both keys should be searchable", func() {
+				So(*Search(root, []byte("a")), ShouldEqual, 1)
+				So(*Search(root, []byte("ab")), ShouldEqual, 2)
+				So(*Search(root, []byte("abc")), ShouldEqual, 3)
+			})
+
+			Convey("Then inner nodes should be created progressively", func() {
+				// Each key extends the previous one, requiring inner nodes
+				// only where distinction is necessary
+				So(root.IsLeaf(), ShouldBeFalse)
+
+				n := root.AsNode4()
+				So(n.NumChildren, ShouldEqual, 2)
+				So(n.Partial.Raw(), ShouldResemble, []byte("a"))
+				So(n.Keys[0], ShouldEqual, 0)
+				So(n.Keys[1], ShouldEqual, byte('b'))
+				So(n.Children[0], ShouldEqual, leaf1.Ref())
+				So(n.Children[1], ShouldNotBeEmpty)
+
+				n1 := n.Children[1].AsNode4()
+				So(n1.NumChildren, ShouldEqual, 2)
+				So(n1.Partial.Raw(), ShouldResemble, []byte(nil))
+				So(n1.Keys[0], ShouldEqual, 0)
+				So(n1.Keys[1], ShouldEqual, byte('c'))
+				So(n1.Children[0], ShouldEqual, leaf2.Ref())
+				So(n1.Children[1], ShouldEqual, leaf3.Ref())
+			})
+		})
+
+		Convey("When inserting keys with no common prefix but similar lengths", func() {
+			leaf1 := node.NewLeaf(a, []byte("hello"), 1)
+			leaf2 := node.NewLeaf(a, []byte("world"), 2)
+			leaf3 := node.NewLeaf(a, []byte("test"), 3)
+
+			RecursiveInsert(a, &root, leaf1, 0, false)
+			RecursiveInsert(a, &root, leaf2, 0, false)
+			RecursiveInsert(a, &root, leaf3, 0, false)
+
+			Convey("Then all keys should be inserted into the tree", func() {
+				So(root.Empty(), ShouldBeFalse)
+				// The root should be an inner node since we have multiple different keys
+				So(root.IsLeaf(), ShouldBeFalse)
+			})
+
+			Convey("Then both keys should be searchable", func() {
+				So(*Search(root, []byte("hello")), ShouldEqual, 1)
+				So(*Search(root, []byte("world")), ShouldEqual, 2)
+				So(*Search(root, []byte("test")), ShouldEqual, 3)
+			})
+
+			Convey("Then inner nodes should be created minimally", func() {
+				n := root.AsNode4()
+
+				So(n.NumChildren, ShouldEqual, 3)
+				So(n.Partial.Raw(), ShouldResemble, []byte(nil))
+				So(n.Keys, ShouldEqual, [4]byte{'h', 't', 'w', 0})
+				So(n.Children, ShouldEqual, [4]node.Ref[int]{leaf1.Ref(), leaf3.Ref(), leaf2.Ref(), 0})
+			})
+		})
+
+		Convey("When testing lazy expansion with complex key patterns", func() {
+			// Insert keys that create a complex but efficient structure
+			keys := []string{
+				"a", "aa", "aaa", "aaaa",
+				"b", "bb", "bbb", "bbbb",
+				"c", "cc", "ccc", "cccc",
+			}
+
+			for i, key := range keys {
+				leaf := node.NewLeaf(a, []byte(key), i+1)
+				RecursiveInsert(a, &root, leaf, 0, false)
+			}
+
+			Convey("Then all keys should be inserted into the tree", func() {
+				So(root.Empty(), ShouldBeFalse)
+				// The root should be an inner node since we have multiple keys
+				So(root.IsLeaf(), ShouldBeFalse)
+			})
+
+			Convey("Then all keys should be searchable", func() {
+				for i, key := range keys {
+					So(*Search(root, []byte(key)), ShouldEqual, i+1)
+				}
+			})
+
+			Convey("Then inner nodes should be created efficiently", func() {
+				n := root.AsNode4()
+				So(n.NumChildren, ShouldEqual, 3)
+				So(n.Partial.Raw(), ShouldResemble, []byte(nil))
+				So(n.Keys, ShouldEqual, [4]byte{'a', 'b', 'c', 0})
+			})
+		})
+
+		Convey("When testing lazy expansion with edge cases", func() {
+			Convey("Then empty keys should work correctly", func() {
+				leaf := node.NewLeaf(a, []byte{}, 1)
+				RecursiveInsert(a, &root, leaf, 0, false)
+				So(root.Empty(), ShouldBeFalse)
+				So(root.IsLeaf(), ShouldBeTrue)
+			})
+
+			Convey("Then single byte keys should work correctly", func() {
+				leaf1 := node.NewLeaf(a, []byte("x"), 1)
+				leaf2 := node.NewLeaf(a, []byte("y"), 2)
+				RecursiveInsert(a, &root, leaf1, 0, false)
+				RecursiveInsert(a, &root, leaf2, 0, false)
+				So(root.Empty(), ShouldBeFalse)
+				So(root.IsLeaf(), ShouldBeFalse)
+			})
+
+			Convey("Then keys with special characters should work correctly", func() {
+				leaf1 := node.NewLeaf(a, []byte("key@123"), 1)
+				leaf2 := node.NewLeaf(a, []byte("key#456"), 2)
+				RecursiveInsert(a, &root, leaf1, 0, false)
+				RecursiveInsert(a, &root, leaf2, 0, false)
+				So(root.Empty(), ShouldBeFalse)
+				So(root.IsLeaf(), ShouldBeFalse)
+			})
+		})
+	})
+}
