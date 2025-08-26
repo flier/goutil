@@ -23,6 +23,10 @@ func TestTree_BasicOperations(t *testing.T) {
 		tree := &art.Tree[int]{}
 
 		Convey("When the tree is empty", func() {
+			Convey("Then Len should return 0", func() {
+				So(tree.Len(), ShouldEqual, 0)
+			})
+
 			Convey("Then Search should return nil", func() {
 				result := tree.Search(kKey)
 				So(result, ShouldBeNil)
@@ -65,6 +69,10 @@ func TestTree_BasicOperations(t *testing.T) {
 
 		Convey("When inserting a single value", func() {
 			oldValue := tree.Insert(a, kHello, 123)
+
+			Convey("Then Len should return 1", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
 
 			Convey("Then Insert should return nil (no old value)", func() {
 				So(oldValue, ShouldBeNil)
@@ -158,6 +166,10 @@ func TestTree_InsertOperations(t *testing.T) {
 			So(tree.Insert(a, []byte("banana"), 2), ShouldBeNil)
 			So(tree.Insert(a, []byte("cherry"), 3), ShouldBeNil)
 
+			Convey("Then Len should return 3", func() {
+				So(tree.Len(), ShouldEqual, 3)
+			})
+
 			Convey("Then all values should be searchable", func() {
 				So(*tree.Search([]byte("apple")), ShouldEqual, 1)
 				So(*tree.Search([]byte("banana")), ShouldEqual, 2)
@@ -227,8 +239,16 @@ func TestTree_InsertOperations(t *testing.T) {
 			// Insert initial value
 			tree.Insert(a, kKey, 100)
 
+			Convey("Then Len should be 1 after first insert", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+
 			// Replace with new value
 			oldValue := tree.Insert(a, kKey, 200)
+
+			Convey("Then Len should remain 1 after replace", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
 
 			Convey("Then Insert should return old value", func() {
 				So(oldValue, ShouldNotBeNil)
@@ -246,8 +266,16 @@ func TestTree_InsertOperations(t *testing.T) {
 			// Insert initial value
 			tree.Insert(a, kKey, 100)
 
+			Convey("Then Len should be 1 after first insert", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+
 			// Try to insert without replace
 			oldValue := tree.InsertNoReplace(a, kKey, 200)
+
+			Convey("Then Len should remain 1 after InsertNoReplace", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
 
 			Convey("Then InsertNoReplace should return old value", func() {
 				So(oldValue, ShouldNotBeNil)
@@ -275,7 +303,15 @@ func TestTree_DeleteOperations(t *testing.T) {
 		tree.Insert(a, []byte("cherry"), 3)
 
 		Convey("When deleting an existing key", func() {
+			Convey("Then Len should be 3 before deletion", func() {
+				So(tree.Len(), ShouldEqual, 3)
+			})
+
 			oldValue := tree.Delete(a, []byte("banana"))
+
+			Convey("Then Len should be 2 after deletion", func() {
+				So(tree.Len(), ShouldEqual, 2)
+			})
 
 			Convey("Then Delete should return the old value", func() {
 				So(oldValue, ShouldNotBeNil)
@@ -308,7 +344,15 @@ func TestTree_DeleteOperations(t *testing.T) {
 		})
 
 		Convey("When deleting a non-existent key", func() {
+			Convey("Then Len should be 3 before deletion attempt", func() {
+				So(tree.Len(), ShouldEqual, 3)
+			})
+
 			oldValue := tree.Delete(a, []byte("nonexistent"))
+
+			Convey("Then Len should remain 3 after deletion attempt", func() {
+				So(tree.Len(), ShouldEqual, 3)
+			})
 
 			Convey("Then Delete should return nil", func() {
 				So(oldValue, ShouldBeNil)
@@ -322,10 +366,25 @@ func TestTree_DeleteOperations(t *testing.T) {
 		})
 
 		Convey("When deleting all keys", func() {
+			Convey("Then Len should be 3 before any deletions", func() {
+				So(tree.Len(), ShouldEqual, 3)
+			})
+
 			// Delete all keys
 			oldValue1 := tree.Delete(a, []byte("apple"))
+			Convey("Then Len should be 2 after first deletion", func() {
+				So(tree.Len(), ShouldEqual, 2)
+			})
+
 			oldValue2 := tree.Delete(a, []byte("banana"))
+			Convey("Then Len should be 1 after second deletion", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+
 			oldValue3 := tree.Delete(a, []byte("cherry"))
+			Convey("Then Len should be 0 after third deletion", func() {
+				So(tree.Len(), ShouldEqual, 0)
+			})
 
 			Convey("Then all deletes should return values", func() {
 				So(oldValue1, ShouldNotBeNil)
@@ -550,6 +609,181 @@ func TestTree_DifferentTypes(t *testing.T) {
 
 			So(*tree.Search([]byte("pi")), ShouldEqual, 3.14159)
 			So(*tree.Search([]byte("e")), ShouldEqual, 2.71828)
+		})
+	})
+}
+
+// TestTree_LenOperations tests the Len method comprehensively
+func TestTree_LenOperations(t *testing.T) {
+	Convey("Given an ART tree", t, func() {
+		tree := &art.Tree[int]{}
+		a := new(arena.Arena)
+
+		Convey("When the tree is newly created", func() {
+			Convey("Then Len should return 0", func() {
+				So(tree.Len(), ShouldEqual, 0)
+			})
+		})
+
+		Convey("When inserting values incrementally", func() {
+			Convey("Then Len should be 0 initially", func() {
+				So(tree.Len(), ShouldEqual, 0)
+			})
+
+			tree.Insert(a, []byte("key1"), 1)
+			Convey("Then Len should be 1 after first insert", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+
+			tree.Insert(a, []byte("key2"), 2)
+			Convey("Then Len should be 2 after second insert", func() {
+				So(tree.Len(), ShouldEqual, 2)
+			})
+
+			tree.Insert(a, []byte("key3"), 3)
+			Convey("Then Len should be 3 after third insert", func() {
+				So(tree.Len(), ShouldEqual, 3)
+			})
+		})
+
+		Convey("When inserting with duplicate keys", func() {
+			tree.Insert(a, []byte("duplicate"), 1)
+			Convey("Then Len should be 1 after first insert", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+
+			tree.Insert(a, []byte("duplicate"), 2)
+			Convey("Then Len should remain 1 after duplicate insert", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+
+			tree.Insert(a, []byte("duplicate"), 3)
+			Convey("Then Len should remain 1 after another duplicate insert", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When inserting with InsertNoReplace", func() {
+			tree.Insert(a, []byte("no-replace"), 1)
+			Convey("Then Len should be 1 after first insert", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+
+			tree.InsertNoReplace(a, []byte("no-replace"), 2)
+			Convey("Then Len should remain 1 after InsertNoReplace", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When deleting values incrementally", func() {
+			// Insert some values first
+			tree.Insert(a, []byte("del1"), 1)
+			tree.Insert(a, []byte("del2"), 2)
+			tree.Insert(a, []byte("del3"), 3)
+
+			Convey("Then Len should be 3 before any deletions", func() {
+				So(tree.Len(), ShouldEqual, 3)
+			})
+
+			tree.Delete(a, []byte("del1"))
+			Convey("Then Len should be 2 after first deletion", func() {
+				So(tree.Len(), ShouldEqual, 2)
+			})
+
+			tree.Delete(a, []byte("del2"))
+			Convey("Then Len should be 1 after second deletion", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+
+			tree.Delete(a, []byte("del3"))
+			Convey("Then Len should be 0 after third deletion", func() {
+				So(tree.Len(), ShouldEqual, 0)
+			})
+		})
+
+		Convey("When deleting non-existent keys", func() {
+			tree.Insert(a, []byte("exists"), 1)
+			Convey("Then Len should be 1 before deletion attempt", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+
+			tree.Delete(a, []byte("non-existent"))
+			Convey("Then Len should remain 1 after deletion attempt", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When mixing insert and delete operations", func() {
+			Convey("Then Len should be 0 initially", func() {
+				So(tree.Len(), ShouldEqual, 0)
+			})
+
+			tree.Insert(a, []byte("mix1"), 1)
+			tree.Insert(a, []byte("mix2"), 2)
+			Convey("Then Len should be 2 after two inserts", func() {
+				So(tree.Len(), ShouldEqual, 2)
+			})
+
+			tree.Delete(a, []byte("mix1"))
+			Convey("Then Len should be 1 after one deletion", func() {
+				So(tree.Len(), ShouldEqual, 1)
+			})
+
+			tree.Insert(a, []byte("mix3"), 3)
+			Convey("Then Len should be 2 after another insert", func() {
+				So(tree.Len(), ShouldEqual, 2)
+			})
+
+			tree.Delete(a, []byte("mix2"))
+			tree.Delete(a, []byte("mix3"))
+			Convey("Then Len should be 0 after deleting remaining keys", func() {
+				So(tree.Len(), ShouldEqual, 0)
+			})
+		})
+
+		Convey("When working with different value types", func() {
+			stringTree := &art.Tree[string]{}
+			floatTree := &art.Tree[float64]{}
+
+			Convey("Then string tree Len should be 0 initially", func() {
+				So(stringTree.Len(), ShouldEqual, 0)
+			})
+
+			stringTree.Insert(a, []byte("str1"), "hello")
+			Convey("Then string tree Len should be 1 after insert", func() {
+				So(stringTree.Len(), ShouldEqual, 1)
+			})
+
+			Convey("Then float tree Len should be 0 initially", func() {
+				So(floatTree.Len(), ShouldEqual, 0)
+			})
+
+			floatTree.Insert(a, []byte("float1"), 3.14)
+			Convey("Then float tree Len should be 1 after insert", func() {
+				So(floatTree.Len(), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When performing rapid insert/delete cycles", func() {
+			for i := 0; i < 10; i++ {
+				key := []byte(fmt.Sprintf("cycle%d", i))
+				tree.Insert(a, key, i)
+				So(tree.Len(), ShouldEqual, i+1)
+			}
+
+			Convey("Then Len should be 10 after all inserts", func() {
+				So(tree.Len(), ShouldEqual, 10)
+			})
+
+			for i := 9; i >= 0; i-- {
+				key := []byte(fmt.Sprintf("cycle%d", i))
+				tree.Delete(a, key)
+				So(tree.Len(), ShouldEqual, i)
+			}
+
+			Convey("Then Len should be 0 after all deletions", func() {
+				So(tree.Len(), ShouldEqual, 0)
+			})
 		})
 	})
 }
