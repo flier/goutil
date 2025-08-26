@@ -12,6 +12,7 @@ import (
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/slice"
 	"github.com/flier/goutil/pkg/opt"
+	"github.com/flier/goutil/pkg/xunsafe"
 )
 
 func TestSlice_Of(t *testing.T) {
@@ -1861,6 +1862,197 @@ func TestSlice_ZeroValue(t *testing.T) {
 			var s3 slice.Slice[string]
 			var s4 slice.Slice[string]
 			So(slice.Equal(s3, s4), ShouldBeTrue)
+		})
+	})
+}
+
+func TestSlice_SplitAt(t *testing.T) {
+	Convey("Given a slice with data", t, func() {
+		a := &arena.Arena{}
+		s := slice.Of(a, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+		So(s.Len(), ShouldEqual, 10)
+		So(s.Load(0), ShouldEqual, 1)
+		So(s.Load(9), ShouldEqual, 10)
+
+		Convey("When splitting at middle index", func() {
+			left, right := s.SplitAt(5)
+
+			So(left.Len(), ShouldEqual, 5)
+			So(left.Cap(), ShouldEqual, 5)
+			So(left.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5})
+
+			So(right.Len(), ShouldEqual, 5)
+			So(right.Cap(), ShouldEqual, 5)
+			So(right.Raw(), ShouldResemble, []int{6, 7, 8, 9, 10})
+		})
+
+		Convey("When splitting at start", func() {
+			left, right := s.SplitAt(0)
+
+			So(left.Len(), ShouldEqual, 0)
+			So(left.Cap(), ShouldEqual, 0)
+
+			So(right.Len(), ShouldEqual, 10)
+			So(right.Cap(), ShouldEqual, 10)
+			So(right.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+		})
+
+		Convey("When splitting at end", func() {
+			left, right := s.SplitAt(10)
+
+			So(left.Len(), ShouldEqual, 10)
+			So(left.Cap(), ShouldEqual, 10)
+			So(left.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+
+			So(right.Len(), ShouldEqual, 0)
+			So(right.Cap(), ShouldEqual, 0)
+		})
+
+		Convey("When splitting with negative index", func() {
+			left, right := s.SplitAt(-3)
+
+			// n = 10 + (-3) = 7
+			So(left.Len(), ShouldEqual, 7)
+			So(left.Cap(), ShouldEqual, 7)
+			So(left.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5, 6, 7})
+
+			So(right.Len(), ShouldEqual, 3)
+			So(right.Cap(), ShouldEqual, 3)
+			So(right.Raw(), ShouldResemble, []int{8, 9, 10})
+		})
+
+		Convey("When splitting with large negative index", func() {
+			left, right := s.SplitAt(-15)
+
+			// n = -15 < -10, so clamped to 0
+			So(left.Len(), ShouldEqual, 0)
+			So(left.Cap(), ShouldEqual, 0)
+
+			So(right.Len(), ShouldEqual, 10)
+			So(right.Cap(), ShouldEqual, 10)
+			So(right.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+		})
+
+		Convey("When splitting with index beyond length", func() {
+			left, right := s.SplitAt(15)
+
+			// n = 15 > 10, so clamped to 10
+			So(left.Len(), ShouldEqual, 10)
+			So(left.Cap(), ShouldEqual, 10)
+			So(left.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+
+			So(right.Len(), ShouldEqual, 0)
+			So(right.Cap(), ShouldEqual, 0)
+		})
+
+		Convey("When splitting empty slice", func() {
+			empty := slice.Make[int](a, 0)
+			left, right := empty.SplitAt(5)
+
+			So(left.Len(), ShouldEqual, 0)
+			So(left.Cap(), ShouldEqual, 0)
+			So(right.Len(), ShouldEqual, 0)
+			So(right.Cap(), ShouldEqual, 0)
+		})
+
+		Convey("When splitting single element slice", func() {
+			single := slice.Of(a, 42)
+			left, right := single.SplitAt(0)
+
+			So(left.Len(), ShouldEqual, 0)
+			So(left.Cap(), ShouldEqual, 0)
+
+			So(right.Len(), ShouldEqual, 1)
+			So(right.Cap(), ShouldEqual, 1)
+			So(right.Load(0), ShouldEqual, 42)
+		})
+
+		Convey("When splitting with string values", func() {
+			strSlice := slice.Of(a, "hello", "world", "test", "example")
+			left, right := strSlice.SplitAt(2)
+
+			So(left.Len(), ShouldEqual, 2)
+			So(left.Load(0), ShouldEqual, "hello")
+			So(left.Load(1), ShouldEqual, "world")
+
+			So(right.Len(), ShouldEqual, 2)
+			So(right.Load(0), ShouldEqual, "test")
+			So(right.Load(1), ShouldEqual, "example")
+		})
+
+		Convey("When splitting preserves memory layout", func() {
+			// Test that the split slices share the same underlying memory
+			left, right := s.SplitAt(5)
+
+			// Both slices should point to the same arena
+			So(left.Ptr(), ShouldNotBeNil)
+			So(right.Ptr(), ShouldNotBeNil)
+
+			// Right slice should start where left slice ends
+			So(right.Ptr(), ShouldEqual, xunsafe.Add(left.Ptr(), 5))
+
+			// Modifying the original slice should affect both parts
+			s.Store(3, 999)
+			So(left.Load(3), ShouldEqual, 999)
+			So(right.Load(-2), ShouldEqual, 999) // -2 from right perspective = 3 from original
+		})
+
+		Convey("When splitting with edge cases", func() {
+			Convey("should handle zero value slice", func() {
+				var zeroSlice slice.Slice[int]
+				left, right := zeroSlice.SplitAt(5)
+
+				So(left.Len(), ShouldEqual, 0)
+				So(left.Cap(), ShouldEqual, 0)
+				So(right.Len(), ShouldEqual, 0)
+				So(right.Cap(), ShouldEqual, 0)
+			})
+
+			Convey("should handle nil pointer slice", func() {
+				nilSlice := slice.Slice[int]{}
+				left, right := nilSlice.SplitAt(5)
+
+				So(left.Len(), ShouldEqual, 0)
+				So(left.Cap(), ShouldEqual, 0)
+				So(right.Len(), ShouldEqual, 0)
+				So(right.Cap(), ShouldEqual, 0)
+			})
+
+			Convey("should handle exact middle split", func() {
+				// Split exactly in the middle
+				left, right := s.SplitAt(5)
+
+				So(left.Len(), ShouldEqual, 5)
+				So(right.Len(), ShouldEqual, 5)
+				So(left.Cap(), ShouldEqual, 5)
+				So(right.Cap(), ShouldEqual, 5)
+
+				// Verify the split point
+				So(left.Load(4), ShouldEqual, 5)
+				So(right.Load(0), ShouldEqual, 6)
+			})
+
+			Convey("should handle single element split", func() {
+				// Split leaving only one element on each side
+				left, right := s.SplitAt(1)
+
+				So(left.Len(), ShouldEqual, 1)
+				So(right.Len(), ShouldEqual, 9)
+				So(left.Load(0), ShouldEqual, 1)
+				So(right.Load(0), ShouldEqual, 2)
+				So(right.Load(8), ShouldEqual, 10)
+			})
+
+			Convey("should handle almost end split", func() {
+				// Split leaving only one element on the right
+				left, right := s.SplitAt(9)
+
+				So(left.Len(), ShouldEqual, 9)
+				So(right.Len(), ShouldEqual, 1)
+				So(left.Load(8), ShouldEqual, 9)
+				So(right.Load(0), ShouldEqual, 10)
+			})
 		})
 	})
 }

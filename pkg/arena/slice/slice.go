@@ -324,6 +324,31 @@ func (s Slice[T]) Slice(start, end int) Slice[T] {
 	}
 }
 
+// SplitAt splits a slice at the given index.
+func (s Slice[T]) SplitAt(n int) (l Slice[T], r Slice[T]) {
+	if s.len == 0 {
+		return
+	}
+
+	if n < 0 {
+		if n >= -int(s.len) {
+			n += int(s.len)
+		} else {
+			n = 0
+		}
+	} else if n >= int(s.len) {
+		n = int(s.len)
+	}
+
+	// Left slice: from start to n, capacity equals length
+	l = Slice[T]{s.ptr, uint32(n), uint32(n)}
+
+	// Right slice: from n to end, capacity equals length
+	r = Slice[T]{xunsafe.Add(s.ptr, n), s.len - uint32(n), s.cap - uint32(n)}
+
+	return
+}
+
 // Clone clones a slice.
 func (s Slice[T]) Clone(a arena.Allocator) Slice[T] {
 	return Clone(a, s)
