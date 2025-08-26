@@ -11,6 +11,12 @@ import (
 // It is a generic type that can store any type of value.
 type Tree[T any] struct {
 	root node.Ref[T]
+	n    int
+}
+
+// Len returns the number of elements in the tree.
+func (t *Tree[T]) Len() int {
+	return t.n
 }
 
 // Search searches for a value in the tree.
@@ -46,14 +52,24 @@ func (t *Tree[T]) Maximum() *node.Leaf[T] {
 //
 // It returns the old value if the key matches the existing key, or nil if the key is inserted.
 func (t *Tree[T]) Insert(a arena.Allocator, key []byte, value T) *T {
-	return tree.RecursiveInsert(a, &t.root, node.NewLeaf(a, key, value), 0, true)
+	p := tree.RecursiveInsert(a, &t.root, node.NewLeaf(a, key, value), 0, true)
+	if p == nil {
+		t.n++
+	}
+
+	return p
 }
 
 // InsertNoReplace inserts a new value into the tree without replacing the existing value.
 //
 // It returns the old value if the key matches the existing key, or nil if the key is inserted.
 func (t *Tree[T]) InsertNoReplace(a arena.Allocator, key []byte, value T) *T {
-	return tree.RecursiveInsert(a, &t.root, node.NewLeaf(a, key, value), 0, false)
+	p := tree.RecursiveInsert(a, &t.root, node.NewLeaf(a, key, value), 0, false)
+	if p == nil {
+		t.n++
+	}
+
+	return p
 }
 
 // Delete deletes a value from the tree.
@@ -64,6 +80,8 @@ func (t *Tree[T]) Delete(a arena.AllocatorExt, key []byte) *T {
 	if l == nil {
 		return nil
 	}
+
+	t.n--
 
 	old := l.Value
 
