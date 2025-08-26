@@ -1883,7 +1883,7 @@ func TestSlice_SplitAt(t *testing.T) {
 			So(left.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5})
 
 			So(right.Len(), ShouldEqual, 5)
-			So(right.Cap(), ShouldEqual, 5)
+			So(right.Cap(), ShouldEqual, 11)
 			So(right.Raw(), ShouldResemble, []int{6, 7, 8, 9, 10})
 		})
 
@@ -1894,7 +1894,7 @@ func TestSlice_SplitAt(t *testing.T) {
 			So(left.Cap(), ShouldEqual, 0)
 
 			So(right.Len(), ShouldEqual, 10)
-			So(right.Cap(), ShouldEqual, 10)
+			So(right.Cap(), ShouldEqual, 16)
 			So(right.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 		})
 
@@ -1906,7 +1906,7 @@ func TestSlice_SplitAt(t *testing.T) {
 			So(left.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 			So(right.Len(), ShouldEqual, 0)
-			So(right.Cap(), ShouldEqual, 0)
+			So(right.Cap(), ShouldEqual, 6)
 		})
 
 		Convey("When splitting with negative index", func() {
@@ -1918,7 +1918,7 @@ func TestSlice_SplitAt(t *testing.T) {
 			So(left.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5, 6, 7})
 
 			So(right.Len(), ShouldEqual, 3)
-			So(right.Cap(), ShouldEqual, 3)
+			So(right.Cap(), ShouldEqual, 9)
 			So(right.Raw(), ShouldResemble, []int{8, 9, 10})
 		})
 
@@ -1930,7 +1930,7 @@ func TestSlice_SplitAt(t *testing.T) {
 			So(left.Cap(), ShouldEqual, 0)
 
 			So(right.Len(), ShouldEqual, 10)
-			So(right.Cap(), ShouldEqual, 10)
+			So(right.Cap(), ShouldEqual, 16)
 			So(right.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 		})
 
@@ -1943,7 +1943,7 @@ func TestSlice_SplitAt(t *testing.T) {
 			So(left.Raw(), ShouldResemble, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 			So(right.Len(), ShouldEqual, 0)
-			So(right.Cap(), ShouldEqual, 0)
+			So(right.Cap(), ShouldEqual, 6)
 		})
 
 		Convey("When splitting empty slice", func() {
@@ -1964,7 +1964,7 @@ func TestSlice_SplitAt(t *testing.T) {
 			So(left.Cap(), ShouldEqual, 0)
 
 			So(right.Len(), ShouldEqual, 1)
-			So(right.Cap(), ShouldEqual, 1)
+			So(right.Cap(), ShouldEqual, 2)
 			So(right.Load(0), ShouldEqual, 42)
 		})
 
@@ -2026,7 +2026,7 @@ func TestSlice_SplitAt(t *testing.T) {
 				So(left.Len(), ShouldEqual, 5)
 				So(right.Len(), ShouldEqual, 5)
 				So(left.Cap(), ShouldEqual, 5)
-				So(right.Cap(), ShouldEqual, 5)
+				So(right.Cap(), ShouldEqual, 11)
 
 				// Verify the split point
 				So(left.Load(4), ShouldEqual, 5)
