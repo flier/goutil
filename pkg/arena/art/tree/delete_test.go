@@ -407,3 +407,121 @@ func TestRecursiveDelete(t *testing.T) {
 		})
 	})
 }
+
+var (
+	kApplication = []byte("application")
+	kAppliance   = []byte("appliance")
+)
+
+// TestRecursiveDelete_PathCompression tests path compression behavior where inner nodes with
+// only a single child are removed to reduce memory usage and improve performance
+func TestRecursiveDelete_PathCompression(t *testing.T) {
+	Convey("Given an ART tree with path compression", t, func() {
+		a := new(arena.Arena)
+		var root node.Ref[int]
+
+		Convey("When inserting keys that would create single-child inner nodes", func() {
+			// Insert keys that create a path with potential single-child nodes
+			RecursiveInsert(a, &root, node.NewLeaf(a, kApplication, 1), 0, false)
+			RecursiveInsert(a, &root, node.NewLeaf(a, kAppliance, 2), 0, false)
+
+			Convey("Then the inner node should be created", func() {
+				So(root.IsNode4(), ShouldBeTrue)
+
+				n := root.AsNode4()
+
+				So(n.NumChildren, ShouldEqual, 2)
+				So(n.Partial.Raw(), ShouldResemble, []byte("appli"))
+				So(n.Keys, ShouldEqual, [4]byte{'a', 'c', 0, 0})
+				So(n.Children[0], ShouldNotBeEmpty)
+				So(n.Children[1], ShouldNotBeEmpty)
+			})
+
+			Convey("Then both keys should be searchable", func() {
+				So(*Search(root, kApplication), ShouldEqual, 1)
+				So(*Search(root, kAppliance), ShouldEqual, 2)
+			})
+
+			Convey("When deleting the first key", func() {
+				oldValue := RecursiveDelete(a, &root, kApplication, 0)
+				So(oldValue, ShouldNotBeNil)
+				So(oldValue.Key.Raw(), ShouldResemble, kApplication)
+				So(oldValue.Value, ShouldEqual, 1)
+
+				Convey("Then the search should return the second key", func() {
+					So(Search(root, kApplication), ShouldBeNil)
+					So(*Search(root, kAppliance), ShouldEqual, 2)
+				})
+
+				Convey("Then path compression should optimize the structure", func() {
+					So(root.IsLeaf(), ShouldBeTrue)
+
+					l := root.AsLeaf()
+
+					So(l.Key.Raw(), ShouldResemble, kAppliance)
+					So(l.Value, ShouldEqual, 2)
+				})
+			})
+		})
+
+		Convey("When inserting keys that would create double-child inner nodes", func() {
+			keys := []string{"a", "ab", "abc"}
+
+			for i, key := range keys {
+				RecursiveInsert(a, &root, node.NewLeaf(a, []byte(key), i), 0, false)
+			}
+
+			Convey("Then the keys should be searchable", func() {
+				So(*Search(root, []byte("a")), ShouldEqual, 0)
+				So(*Search(root, []byte("ab")), ShouldEqual, 1)
+				So(*Search(root, []byte("abc")), ShouldEqual, 2)
+			})
+
+			Convey("Then the inner node should be created", func() {
+				So(root.IsNode4(), ShouldBeTrue)
+
+				n := root.AsNode4()
+
+				So(n.NumChildren, ShouldEqual, 2)
+				So(n.Partial.Raw(), ShouldResemble, []byte("a"))
+				So(n.Keys, ShouldEqual, [4]byte{0, 'b', 0, 0})
+
+				n1 := n.Children[1].AsNode4()
+				So(n1.NumChildren, ShouldEqual, 2)
+				So(n1.Partial.Raw(), ShouldResemble, []byte(nil))
+				So(n1.Keys, ShouldEqual, [4]byte{0, 'c', 0, 0})
+			})
+
+			Convey("When deleting the middle key", func() {
+				oldValue := RecursiveDelete(a, &root, []byte("ab"), 0)
+				So(oldValue, ShouldNotBeNil)
+				So(oldValue.Key.Raw(), ShouldResemble, []byte("ab"))
+				So(oldValue.Value, ShouldEqual, 1)
+
+				Convey("Then the keys should be searchable", func() {
+					So(Search(root, []byte("a")), ShouldNotBeNil)
+					So(Search(root, []byte("abc")), ShouldNotBeNil)
+				})
+
+				Convey("Then the inner node should be optimized", func() {
+					So(root.IsNode4(), ShouldBeTrue)
+
+					n := root.AsNode4()
+					So(n.NumChildren, ShouldEqual, 2)
+					So(n.Partial.Raw(), ShouldResemble, []byte("a"))
+					So(n.Keys, ShouldEqual, [4]byte{0, 'b', 0, 0})
+					So(n.Children[0].IsLeaf(), ShouldBeTrue)
+
+					l := n.Children[0].AsLeaf()
+					So(l.Key.Raw(), ShouldResemble, []byte("a"))
+					So(l.Value, ShouldEqual, 0)
+
+					So(n.Children[1].IsLeaf(), ShouldBeTrue)
+					l1 := n.Children[1].AsLeaf()
+					So(l1.Key.Raw(), ShouldResemble, []byte("abc"))
+					So(l1.Value, ShouldEqual, 2)
+				})
+			})
+		})
+	})
+}

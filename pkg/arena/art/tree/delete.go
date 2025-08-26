@@ -35,12 +35,18 @@ func RecursiveDelete[T any](a arena.AllocatorExt, ref *node.Ref[T], key []byte, 
 	}
 
 	// Check if depth exceeds key length
-	if depth >= len(key) {
+	if depth > len(key) {
 		return nil
 	}
 
+	var b byte
+
+	if depth < len(key) {
+		b = key[depth]
+	}
+
 	// Find the child node
-	child := n.FindChild(key[depth])
+	child := n.FindChild(b)
 	if child == nil {
 		// If the child is not found, return nil
 		return nil
@@ -49,7 +55,7 @@ func RecursiveDelete[T any](a arena.AllocatorExt, ref *node.Ref[T], key []byte, 
 	// If the child is a leaf, check if it matches the key
 	if l := child.AsLeaf(); l != nil {
 		if l.Matches(key) {
-			RemoveChild(a, ref, key[depth], child)
+			RemoveChild(a, ref, b, child)
 
 			return l
 		}
