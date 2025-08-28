@@ -975,24 +975,25 @@ func BenchmarkRecursiveIter(b *testing.B) {
 }
 
 func BenchmarkIterPrefix(b *testing.B) {
-	a := new(arena.Arena)
-
-	// Create a tree with prefix compression for benchmarking
-	root := arena.New(a, Node4[int]{})
-	root.NumChildren = 4
-	root.Partial = slice.FromBytes(a, []byte("prefix"))
-
-	for i := 0; i < 4; i++ {
-		key := append([]byte("prefix"), byte('a'+i))
-		leaf := NewLeaf(a, key, i)
-		root.Keys[i] = byte('a' + i)
-		root.Children[i] = leaf.Ref()
-	}
-
-	ref := root.Ref()
-
 	b.Run("prefix_match", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
+			// Fresh arena per iteration to prevent memory corruption
+			a := new(arena.Arena)
+
+			// Create a tree with prefix compression for benchmarking
+			root := arena.New(a, Node4[int]{})
+			root.NumChildren = 4
+			root.Partial = slice.FromBytes(a, []byte("prefix"))
+
+			for j := 0; j < 4; j++ {
+				key := append([]byte("prefix"), byte('a'+j))
+				leaf := NewLeaf(a, key, j)
+				root.Keys[j] = byte('a' + j)
+				root.Children[j] = leaf.Ref()
+			}
+
+			ref := root.Ref()
+
 			visited := make(map[string]int)
 			IterPrefix(ref, []byte("prefix"), func(key []byte, value *int) bool {
 				visited[string(key)] = *value
@@ -1003,6 +1004,23 @@ func BenchmarkIterPrefix(b *testing.B) {
 
 	b.Run("partial_prefix_match", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
+			// Fresh arena per iteration to prevent memory corruption
+			a := new(arena.Arena)
+
+			// Create a tree with prefix compression for benchmarking
+			root := arena.New(a, Node4[int]{})
+			root.NumChildren = 4
+			root.Partial = slice.FromBytes(a, []byte("prefix"))
+
+			for j := 0; j < 4; j++ {
+				key := append([]byte("prefix"), byte('a'+j))
+				leaf := NewLeaf(a, key, j)
+				root.Keys[j] = byte('a' + j)
+				root.Children[j] = leaf.Ref()
+			}
+
+			ref := root.Ref()
+
 			visited := make(map[string]int)
 			IterPrefix(ref, []byte("pre"), func(key []byte, value *int) bool {
 				visited[string(key)] = *value
@@ -1013,6 +1031,23 @@ func BenchmarkIterPrefix(b *testing.B) {
 
 	b.Run("no_match", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
+			// Fresh arena per iteration to prevent memory corruption
+			a := new(arena.Arena)
+
+			// Create a tree with prefix compression for benchmarking
+			root := arena.New(a, Node4[int]{})
+			root.NumChildren = 4
+			root.Partial = slice.FromBytes(a, []byte("prefix"))
+
+			for j := 0; j < 4; j++ {
+				key := append([]byte("prefix"), byte('a'+j))
+				leaf := NewLeaf(a, key, j)
+				root.Keys[j] = byte('a' + j)
+				root.Children[j] = leaf.Ref()
+			}
+
+			ref := root.Ref()
+
 			visited := make(map[string]int)
 			IterPrefix(ref, []byte("nonexistent"), func(key []byte, value *int) bool {
 				visited[string(key)] = *value

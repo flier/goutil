@@ -178,9 +178,7 @@ func TestPrefixMismatch(t *testing.T) {
 
 		Convey("When checking prefix mismatch", func() {
 			Convey("And node has no prefix", func() {
-				key := slice.FromString(a, "hello")
-
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, []byte("hello"), 0)
 
 				Convey("Then should return 0", func() {
 					So(result, ShouldEqual, 0)
@@ -189,9 +187,8 @@ func TestPrefixMismatch(t *testing.T) {
 
 			Convey("And node has empty prefix", func() {
 				node4.Partial = slice.FromString(a, "")
-				key := slice.FromString(a, "hello")
 
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, []byte("hello"), 0)
 
 				Convey("Then should return 0", func() {
 					So(result, ShouldEqual, 0)
@@ -202,9 +199,7 @@ func TestPrefixMismatch(t *testing.T) {
 				node4.Partial = slice.FromString(a, "hello")
 
 				Convey("And key matches prefix exactly", func() {
-					key := slice.FromString(a, "hello")
-
-					result := PrefixMismatch[any](node4, key, 0)
+					result := PrefixMismatch[any](node4, []byte("hello"), 0)
 
 					Convey("Then should return prefix length", func() {
 						So(result, ShouldEqual, 5)
@@ -212,9 +207,7 @@ func TestPrefixMismatch(t *testing.T) {
 				})
 
 				Convey("And key starts with prefix", func() {
-					key := slice.FromString(a, "hello world")
-
-					result := PrefixMismatch[any](node4, key, 0)
+					result := PrefixMismatch[any](node4, []byte("hello world"), 0)
 
 					Convey("Then should return prefix length", func() {
 						So(result, ShouldEqual, 5)
@@ -222,9 +215,7 @@ func TestPrefixMismatch(t *testing.T) {
 				})
 
 				Convey("And key has different first character", func() {
-					key := slice.FromString(a, "world")
-
-					result := PrefixMismatch[any](node4, key, 0)
+					result := PrefixMismatch[any](node4, []byte("world"), 0)
 
 					Convey("Then should return 0", func() {
 						So(result, ShouldEqual, 0)
@@ -232,9 +223,7 @@ func TestPrefixMismatch(t *testing.T) {
 				})
 
 				Convey("And key has partial match", func() {
-					key := slice.FromString(a, "help")
-
-					result := PrefixMismatch[any](node4, key, 0)
+					result := PrefixMismatch[any](node4, []byte("help"), 0)
 
 					Convey("Then should return mismatch position", func() {
 						So(result, ShouldEqual, 3)
@@ -242,9 +231,7 @@ func TestPrefixMismatch(t *testing.T) {
 				})
 
 				Convey("And key is shorter than prefix", func() {
-					key := slice.FromString(a, "hello")
-
-					result := PrefixMismatch[any](node4, key, 0)
+					result := PrefixMismatch[any](node4, []byte("hello"), 0)
 
 					Convey("Then should return key length", func() {
 						So(result, ShouldEqual, 5)
@@ -252,9 +239,7 @@ func TestPrefixMismatch(t *testing.T) {
 				})
 
 				Convey("And key is empty", func() {
-					key := slice.FromBytes(a, []byte{})
-
-					result := PrefixMismatch[any](node4, key, 0)
+					result := PrefixMismatch[any](node4, []byte{}, 0)
 
 					Convey("Then should return 0", func() {
 						So(result, ShouldEqual, 0)
@@ -262,7 +247,7 @@ func TestPrefixMismatch(t *testing.T) {
 				})
 
 				Convey("And key is nil", func() {
-					result := PrefixMismatch[any](node4, slice.Slice[byte]{}, 0)
+					result := PrefixMismatch[any](node4, nil, 0)
 
 					Convey("Then should return 0", func() {
 						So(result, ShouldEqual, 0)
@@ -275,9 +260,7 @@ func TestPrefixMismatch(t *testing.T) {
 			node4.Partial = slice.FromString(a, "world")
 
 			Convey("And checking from middle of key", func() {
-				key := slice.FromBytes(a, []byte("hello world"))
-
-				result := PrefixMismatch[any](node4, key, 6)
+				result := PrefixMismatch[any](node4, []byte("hello world"), 6)
 
 				Convey("Then should return depth + prefix length", func() {
 					So(result, ShouldEqual, 5)
@@ -285,9 +268,7 @@ func TestPrefixMismatch(t *testing.T) {
 			})
 
 			Convey("And checking from end of key", func() {
-				key := slice.FromBytes(a, []byte("hello world"))
-
-				result := PrefixMismatch[any](node4, key, 11)
+				result := PrefixMismatch[any](node4, []byte("hello world"), 11)
 
 				Convey("Then should return key length", func() {
 					So(result, ShouldEqual, 0)
@@ -295,9 +276,7 @@ func TestPrefixMismatch(t *testing.T) {
 			})
 
 			Convey("And depth exceeds key length", func() {
-				key := slice.FromBytes(a, []byte("hello"))
-
-				result := PrefixMismatch[any](node4, key, 6)
+				result := PrefixMismatch[any](node4, []byte("hello"), 6)
 
 				Convey("Then should return key length", func() {
 					So(result, ShouldEqual, 0)
@@ -308,9 +287,7 @@ func TestPrefixMismatch(t *testing.T) {
 		Convey("When checking with special characters", func() {
 			Convey("And prefix contains newlines", func() {
 				node4.Partial = slice.FromBytes(a, []byte("hello\nworld"))
-				key := slice.FromBytes(a, []byte("hello\nworld"))
-
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, []byte("hello\nworld"), 0)
 
 				Convey("Then should match exactly", func() {
 					So(result, ShouldEqual, 11)
@@ -319,9 +296,7 @@ func TestPrefixMismatch(t *testing.T) {
 
 			Convey("And prefix contains tabs", func() {
 				node4.Partial = slice.FromBytes(a, []byte("hello\tworld"))
-				key := slice.FromBytes(a, []byte("hello\tworld"))
-
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, []byte("hello\tworld"), 0)
 
 				Convey("Then should match exactly", func() {
 					So(result, ShouldEqual, 11)
@@ -330,9 +305,7 @@ func TestPrefixMismatch(t *testing.T) {
 
 			Convey("And prefix contains null bytes", func() {
 				node4.Partial = slice.FromBytes(a, []byte("hello\000world"))
-				key := slice.FromBytes(a, []byte("hello\000world"))
-
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, []byte("hello\000world"), 0)
 
 				Convey("Then should match exactly", func() {
 					So(result, ShouldEqual, 11)
@@ -343,9 +316,7 @@ func TestPrefixMismatch(t *testing.T) {
 		Convey("When checking with unicode characters", func() {
 			Convey("And prefix contains unicode", func() {
 				node4.Partial = slice.FromBytes(a, []byte("hello世界"))
-				key := slice.FromBytes(a, []byte("hello世界"))
-
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, []byte("hello世界"), 0)
 
 				Convey("Then should match exactly", func() {
 					So(result, ShouldEqual, 11)
@@ -354,9 +325,7 @@ func TestPrefixMismatch(t *testing.T) {
 
 			Convey("And key has different unicode", func() {
 				node4.Partial = slice.FromBytes(a, []byte("hello世界"))
-				key := slice.FromBytes(a, []byte("hello地球"))
-
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, []byte("hello地球"), 0)
 
 				Convey("Then should return mismatch position", func() {
 					So(result, ShouldEqual, 5)
@@ -380,8 +349,8 @@ func TestPrefixMismatch_EdgeCases(t *testing.T) {
 				}
 				node4.Partial = slice.FromBytes(a, longPrefix)
 
-				key := slice.FromBytes(a, make([]byte, prefixLen))
-				copy(key.Raw(), longPrefix)
+				key := make([]byte, prefixLen)
+				copy(key, longPrefix)
 
 				result := PrefixMismatch[any](node4, key, 0)
 
@@ -403,7 +372,7 @@ func TestPrefixMismatch_EdgeCases(t *testing.T) {
 				key := slice.FromBytes(a, make([]byte, keyLen))
 				copy(key.Raw(), longPrefix[:keyLen])
 
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, key.Raw(), 0)
 
 				Convey("Then should return key length", func() {
 					So(result, ShouldEqual, keyLen)
@@ -415,9 +384,8 @@ func TestPrefixMismatch_EdgeCases(t *testing.T) {
 			Convey("And prefix contains zero bytes", func() {
 				node4 := arena.New(a, Node4[any]{})
 				node4.Partial = slice.FromBytes(a, []byte{0, 0, 0})
-				key := slice.FromBytes(a, []byte{0, 0, 0})
 
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, []byte{0, 0, 0}, 0)
 
 				Convey("Then should match exactly", func() {
 					So(result, ShouldEqual, 3)
@@ -427,9 +395,8 @@ func TestPrefixMismatch_EdgeCases(t *testing.T) {
 			Convey("And prefix contains maximum byte values", func() {
 				node4 := arena.New(a, Node4[any]{})
 				node4.Partial = slice.FromBytes(a, []byte{255, 255, 255})
-				key := slice.FromBytes(a, []byte{255, 255, 255})
 
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, []byte{255, 255, 255}, 0)
 
 				Convey("Then should match exactly", func() {
 					So(result, ShouldEqual, 3)
@@ -439,9 +406,8 @@ func TestPrefixMismatch_EdgeCases(t *testing.T) {
 			Convey("And prefix contains mixed boundary values", func() {
 				node4 := arena.New(a, Node4[any]{})
 				node4.Partial = slice.FromBytes(a, []byte{0, 128, 255})
-				key := slice.FromBytes(a, []byte{0, 128, 255})
 
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, []byte{0, 128, 255}, 0)
 
 				Convey("Then should match exactly", func() {
 					So(result, ShouldEqual, 3)
@@ -462,8 +428,8 @@ func TestPrefixMismatch_EdgeCases(t *testing.T) {
 				}
 				node4.Partial = slice.FromBytes(a, prefix)
 
-				key := slice.FromBytes(a, make([]byte, 100))
-				copy(key.Raw(), prefix)
+				key := make([]byte, 100)
+				copy(key, prefix)
 
 				result := PrefixMismatch[any](node4, key, 0)
 
@@ -480,10 +446,7 @@ func TestPrefixMismatch_EdgeCases(t *testing.T) {
 				}
 				node4.Partial = slice.FromBytes(a, prefix)
 
-				key := slice.FromBytes(a, make([]byte, 256))
-				copy(key.Raw(), prefix)
-
-				result := PrefixMismatch[any](node4, key, 0)
+				result := PrefixMismatch[any](node4, prefix, 0)
 
 				Convey("Then should match exactly", func() {
 					So(result, ShouldEqual, 256)

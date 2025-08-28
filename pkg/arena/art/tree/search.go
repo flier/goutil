@@ -2,6 +2,7 @@ package tree
 
 import (
 	"github.com/flier/goutil/pkg/arena/art/node"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 // Search searches for a key in the ART tree.
@@ -31,9 +32,10 @@ func Search[T any](ref node.Ref[T], key []byte) *T {
 			depth += partial.Len()
 		}
 
-		var b byte
+		var b opt.Option[byte]
+
 		if depth < len(key) {
-			b = key[depth]
+			b = opt.Some(key[depth])
 		}
 
 		// Recursively search

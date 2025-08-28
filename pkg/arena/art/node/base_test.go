@@ -15,7 +15,7 @@ func TestBase(t *testing.T) {
 		a := &arena.Arena{}
 
 		Convey("When creating a new base", func() {
-			base := &Base{}
+			base := &Base[any]{}
 
 			Convey("Then should have default values", func() {
 				So(base.NumChildren, ShouldEqual, 0)
@@ -24,7 +24,7 @@ func TestBase(t *testing.T) {
 		})
 
 		Convey("When setting prefix", func() {
-			base := &Base{}
+			base := &Base[any]{}
 			prefix := slice.FromString(a, "hello")
 
 			base.SetPrefix(prefix)
@@ -40,7 +40,7 @@ func TestBase(t *testing.T) {
 		})
 
 		Convey("When updating prefix", func() {
-			base := &Base{}
+			base := &Base[any]{}
 			prefix1 := slice.FromString(a, "hello")
 			prefix2 := slice.FromString(a, "world")
 
@@ -54,7 +54,7 @@ func TestBase(t *testing.T) {
 		})
 
 		Convey("When setting empty prefix", func() {
-			base := &Base{}
+			base := &Base[any]{}
 			emptyPrefix := slice.FromBytes(a, []byte{})
 
 			base.SetPrefix(emptyPrefix)
@@ -66,7 +66,7 @@ func TestBase(t *testing.T) {
 		})
 
 		Convey("When setting nil prefix", func() {
-			base := &Base{}
+			base := &Base[any]{}
 			var nilPrefix slice.Slice[byte]
 
 			base.SetPrefix(nilPrefix)
@@ -78,7 +78,7 @@ func TestBase(t *testing.T) {
 		})
 
 		Convey("When setting very long prefix", func() {
-			base := &Base{}
+			base := &Base[any]{}
 			longPrefix := make([]byte, 1000)
 			for i := range longPrefix {
 				longPrefix[i] = byte(i % 256)
@@ -95,7 +95,7 @@ func TestBase(t *testing.T) {
 		})
 
 		Convey("When setting prefix with special characters", func() {
-			base := &Base{}
+			base := &Base[any]{}
 			specialPrefix := slice.FromBytes(a, []byte("hello\n\t\r\000world"))
 
 			base.SetPrefix(specialPrefix)
@@ -107,7 +107,7 @@ func TestBase(t *testing.T) {
 		})
 
 		Convey("When setting prefix with unicode characters", func() {
-			base := &Base{}
+			base := &Base[any]{}
 			unicodePrefix := slice.FromBytes(a, []byte("hello世界"))
 
 			base.SetPrefix(unicodePrefix)
@@ -126,7 +126,7 @@ func TestBase_EdgeCases(t *testing.T) {
 
 		Convey("When working with boundary values", func() {
 			Convey("And setting prefix with zero bytes", func() {
-				base := &Base{}
+				base := &Base[any]{}
 				zeroPrefix := slice.FromBytes(a, []byte{0, 0, 0})
 
 				base.SetPrefix(zeroPrefix)
@@ -138,7 +138,7 @@ func TestBase_EdgeCases(t *testing.T) {
 			})
 
 			Convey("And setting prefix with maximum byte values", func() {
-				base := &Base{}
+				base := &Base[any]{}
 				maxPrefix := slice.FromBytes(a, []byte{255, 255, 255})
 
 				base.SetPrefix(maxPrefix)
@@ -150,7 +150,7 @@ func TestBase_EdgeCases(t *testing.T) {
 			})
 
 			Convey("And setting prefix with mixed boundary values", func() {
-				base := &Base{}
+				base := &Base[any]{}
 				mixedPrefix := slice.FromBytes(a, []byte{0, 128, 255})
 
 				base.SetPrefix(mixedPrefix)
@@ -164,7 +164,7 @@ func TestBase_EdgeCases(t *testing.T) {
 
 		Convey("When working with very long prefixes", func() {
 			Convey("And setting prefix with 1MB length", func() {
-				base := &Base{}
+				base := &Base[any]{}
 				prefixLen := 1024 * 1024
 				longPrefix := make([]byte, prefixLen)
 				for i := range longPrefix {
@@ -184,7 +184,7 @@ func TestBase_EdgeCases(t *testing.T) {
 			})
 
 			Convey("And setting prefix with exactly 256 bytes", func() {
-				base := &Base{}
+				base := &Base[any]{}
 				prefixLen := 256
 				prefix := make([]byte, prefixLen)
 				for i := range prefix {
@@ -204,7 +204,7 @@ func TestBase_EdgeCases(t *testing.T) {
 
 		Convey("When working with special patterns", func() {
 			Convey("And setting prefix with alternating bytes", func() {
-				base := &Base{}
+				base := &Base[any]{}
 				prefix := make([]byte, 100)
 				for i := range prefix {
 					if i%2 == 0 {
@@ -227,7 +227,7 @@ func TestBase_EdgeCases(t *testing.T) {
 			})
 
 			Convey("And setting prefix with sequential bytes", func() {
-				base := &Base{}
+				base := &Base[any]{}
 				prefix := make([]byte, 256)
 				for i := range prefix {
 					prefix[i] = byte(i)
@@ -253,7 +253,7 @@ func TestBase_Performance(t *testing.T) {
 
 		Convey("When performing many prefix operations", func() {
 			Convey("And setting prefix 1000 times", func() {
-				base := &Base{}
+				base := &Base[any]{}
 
 				for i := 0; i < 1000; i++ {
 					prefix := slice.FromBytes(a, []byte{byte(i % 256)})
@@ -267,7 +267,7 @@ func TestBase_Performance(t *testing.T) {
 			})
 
 			Convey("And setting prefixes of different lengths", func() {
-				base := &Base{}
+				base := &Base[any]{}
 
 				lengths := []int{1, 10, 100, 1000}
 				for _, length := range lengths {
@@ -289,7 +289,7 @@ func TestBase_Performance(t *testing.T) {
 
 		Convey("When working with large data sets", func() {
 			Convey("And setting multiple large prefixes", func() {
-				base := &Base{}
+				base := &Base[any]{}
 
 				// Set multiple large prefixes
 				for i := 0; i < 10; i++ {

@@ -2,7 +2,7 @@ package tree
 
 import (
 	"github.com/flier/goutil/pkg/arena/art/node"
-	"github.com/flier/goutil/pkg/arena/slice"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 // RecursiveIter iterates over the tree using a callback function.
@@ -19,6 +19,12 @@ func RecursiveIter[T any](ref node.Ref[T], cb func(key []byte, value *T) bool) b
 		return cb(n.Key.Raw(), &n.Value)
 
 	case *node.Node4[T]:
+		if !n.ZeroSizedChild.Empty() {
+			if RecursiveIter(n.ZeroSizedChild, cb) {
+				return true
+			}
+		}
+
 		for i := 0; i < n.NumChildren; i++ {
 			if RecursiveIter(n.Children[i], cb) {
 				return true
@@ -26,6 +32,12 @@ func RecursiveIter[T any](ref node.Ref[T], cb func(key []byte, value *T) bool) b
 		}
 
 	case *node.Node16[T]:
+		if !n.ZeroSizedChild.Empty() {
+			if RecursiveIter(n.ZeroSizedChild, cb) {
+				return true
+			}
+		}
+
 		for i := 0; i < n.NumChildren; i++ {
 			if RecursiveIter(n.Children[i], cb) {
 				return true
@@ -33,6 +45,12 @@ func RecursiveIter[T any](ref node.Ref[T], cb func(key []byte, value *T) bool) b
 		}
 
 	case *node.Node48[T]:
+		if !n.ZeroSizedChild.Empty() {
+			if RecursiveIter(n.ZeroSizedChild, cb) {
+				return true
+			}
+		}
+
 		for i := 0; i < 256; i++ {
 			if idx := n.Keys[i]; idx != 0 {
 				if RecursiveIter(n.Children[idx-1], cb) {
@@ -42,6 +60,12 @@ func RecursiveIter[T any](ref node.Ref[T], cb func(key []byte, value *T) bool) b
 		}
 
 	case *node.Node256[T]:
+		if !n.ZeroSizedChild.Empty() {
+			if RecursiveIter(n.ZeroSizedChild, cb) {
+				return true
+			}
+		}
+
 		for i := 0; i < 256; i++ {
 			if !n.Children[i].Empty() {
 				if RecursiveIter(n.Children[i], cb) {
@@ -81,11 +105,11 @@ func IterPrefix[T any](ref node.Ref[T], prefix []byte, cb func(key []byte, value
 			return false
 		}
 
-		if n.Prefix().Len() > 0 {
-			prefixLen := PrefixMismatch(n, slice.Wrap(prefix), depth)
+		if p := n.Prefix(); p.Len() > 0 {
+			prefixLen := PrefixMismatch(n, prefix, depth)
 
-			if prefixLen > n.Prefix().Len() {
-				prefixLen = n.Prefix().Len()
+			if prefixLen > p.Len() {
+				prefixLen = p.Len()
 			}
 
 			if prefixLen == 0 {
@@ -94,10 +118,10 @@ func IterPrefix[T any](ref node.Ref[T], prefix []byte, cb func(key []byte, value
 				return RecursiveIter(n.Ref(), cb)
 			}
 
-			depth += n.Prefix().Len()
+			depth += p.Len()
 		}
 
-		child := n.FindChild(prefix[depth])
+		child := n.FindChild(opt.Some(prefix[depth]))
 
 		if child == nil {
 			break

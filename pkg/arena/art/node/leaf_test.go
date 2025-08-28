@@ -8,6 +8,7 @@ import (
 	"github.com/flier/goutil/pkg/arena"
 	. "github.com/flier/goutil/pkg/arena/art/node"
 	"github.com/flier/goutil/pkg/arena/slice"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 func TestLeaf(t *testing.T) {
@@ -142,18 +143,18 @@ func TestLeaf(t *testing.T) {
 			leaf := NewLeaf(a, []byte("hello"), 123)
 
 			Convey("Then FindChild should panic", func() {
-				So(func() { leaf.FindChild('h') }, ShouldPanicWith, "leaf cannot have children")
+				So(func() { leaf.FindChild(opt.Some(byte('h'))) }, ShouldPanicWith, "leaf cannot have children")
 			})
 
 			Convey("And AddChild should panic", func() {
 				otherLeaf := NewLeaf(a, []byte("world"), 456)
-				So(func() { leaf.AddChild('w', otherLeaf) }, ShouldPanicWith, "leaf cannot have children")
+				So(func() { leaf.AddChild(opt.Some(byte('w')), otherLeaf) }, ShouldPanicWith, "leaf cannot have children")
 			})
 
 			Convey("And RemoveChild should panic", func() {
 				otherLeaf := NewLeaf(a, []byte("world"), 456)
 				otherRef := otherLeaf.Ref()
-				So(func() { leaf.RemoveChild('w', &otherRef) }, ShouldPanicWith, "leaf cannot have children")
+				So(func() { leaf.RemoveChild(opt.Some(byte('w')), &otherRef) }, ShouldPanicWith, "leaf cannot have children")
 			})
 
 			Convey("And Grow should panic", func() {

@@ -8,6 +8,7 @@ import (
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/art/node"
 	. "github.com/flier/goutil/pkg/arena/art/tree"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 func TestRecursiveDelete(t *testing.T) {
@@ -287,7 +288,7 @@ func TestRecursiveDelete(t *testing.T) {
 
 				Convey("And tree should be modified (one child removed)", func() {
 					So(node256.NumChildren, ShouldEqual, 49)
-					So(node256.FindChild(25), ShouldBeNil)
+					So(node256.FindChild(opt.Some(byte(25))), ShouldBeNil)
 				})
 			})
 
@@ -482,14 +483,18 @@ func TestRecursiveDelete_PathCompression(t *testing.T) {
 
 				n := root.AsNode4()
 
-				So(n.NumChildren, ShouldEqual, 2)
+				So(n.NumChildren, ShouldEqual, 1)
 				So(n.Partial.Raw(), ShouldResemble, []byte("a"))
-				So(n.Keys, ShouldEqual, [4]byte{0, 'b', 0, 0})
+				So(n.ZeroSizedChild.Empty(), ShouldBeFalse)
+				So(n.ZeroSizedChild.AsLeaf().Key.Raw(), ShouldResemble, []byte("a"))
+				So(n.Keys, ShouldEqual, [4]byte{'b', 0, 0, 0})
 
-				n1 := n.Children[1].AsNode4()
-				So(n1.NumChildren, ShouldEqual, 2)
+				n1 := n.Children[0].AsNode4()
+				So(n1.NumChildren, ShouldEqual, 1)
 				So(n1.Partial.Raw(), ShouldResemble, []byte(nil))
-				So(n1.Keys, ShouldEqual, [4]byte{0, 'c', 0, 0})
+				So(n1.ZeroSizedChild.Empty(), ShouldBeFalse)
+				So(n1.ZeroSizedChild.AsLeaf().Key.Raw(), ShouldResemble, []byte("ab"))
+				So(n1.Keys, ShouldEqual, [4]byte{'c', 0, 0, 0})
 			})
 
 			Convey("When deleting the middle key", func() {
@@ -507,19 +512,23 @@ func TestRecursiveDelete_PathCompression(t *testing.T) {
 					So(root.IsNode4(), ShouldBeTrue)
 
 					n := root.AsNode4()
-					So(n.NumChildren, ShouldEqual, 2)
+					So(n.NumChildren, ShouldEqual, 1)
 					So(n.Partial.Raw(), ShouldResemble, []byte("a"))
-					So(n.Keys, ShouldEqual, [4]byte{0, 'b', 0, 0})
-					So(n.Children[0].IsLeaf(), ShouldBeTrue)
+					So(n.Keys, ShouldEqual, [4]byte{'b', 0, 0, 0})
 
-					l := n.Children[0].AsLeaf()
-					So(l.Key.Raw(), ShouldResemble, []byte("a"))
-					So(l.Value, ShouldEqual, 0)
+					Convey("Then the zero-sized child should be optimized", func() {
+						So(n.ZeroSizedChild.Empty(), ShouldBeFalse)
+						l := n.ZeroSizedChild.AsLeaf()
+						So(l.Key.Raw(), ShouldResemble, []byte("a"))
+						So(l.Value, ShouldEqual, 0)
+					})
 
-					So(n.Children[1].IsLeaf(), ShouldBeTrue)
-					l1 := n.Children[1].AsLeaf()
-					So(l1.Key.Raw(), ShouldResemble, []byte("abc"))
-					So(l1.Value, ShouldEqual, 2)
+					Convey("Then the non-zero-sized child should be optimized", func() {
+						So(n.Children[0].IsLeaf(), ShouldBeTrue)
+						l := n.Children[0].AsLeaf()
+						So(l.Key.Raw(), ShouldResemble, []byte("abc"))
+						So(l.Value, ShouldEqual, 2)
+					})
 				})
 			})
 		})

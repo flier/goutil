@@ -8,6 +8,7 @@ import (
 	"github.com/flier/goutil/pkg/arena"
 	. "github.com/flier/goutil/pkg/arena/art/node"
 	"github.com/flier/goutil/pkg/arena/slice"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 func TestNode256(t *testing.T) {
@@ -30,15 +31,15 @@ func TestNode256(t *testing.T) {
 			}
 
 			Convey("Adding first child", func() {
-				node.AddChild(42, children[0])
+				node.AddChild(opt.Some(byte(42)), children[0])
 				So(node.NumChildren, ShouldEqual, 1)
 				So(node.Children[42], ShouldEqual, children[0].Ref())
 			})
 
 			Convey("Adding multiple children", func() {
-				node.AddChild(10, children[0])
-				node.AddChild(20, children[1])
-				node.AddChild(30, children[2])
+				node.AddChild(opt.Some(byte(10)), children[0])
+				node.AddChild(opt.Some(byte(20)), children[1])
+				node.AddChild(opt.Some(byte(30)), children[2])
 
 				So(node.NumChildren, ShouldEqual, 3)
 				So(node.Children[10], ShouldEqual, children[0].Ref())
@@ -48,9 +49,9 @@ func TestNode256(t *testing.T) {
 
 			Convey("Adding children with sparse keys", func() {
 				// Add children with widely spaced keys
-				node.AddChild(0, children[0])
-				node.AddChild(128, children[1])
-				node.AddChild(255, children[2])
+				node.AddChild(opt.Some(byte(0)), children[0])
+				node.AddChild(opt.Some(byte(128)), children[1])
+				node.AddChild(opt.Some(byte(255)), children[2])
 
 				So(node.NumChildren, ShouldEqual, 3)
 				So(node.Children[0], ShouldEqual, children[0].Ref())
@@ -60,8 +61,8 @@ func TestNode256(t *testing.T) {
 
 			Convey("Adding children at boundaries", func() {
 				// Add children at the beginning and end of the byte range
-				node.AddChild(0, children[0])
-				node.AddChild(255, children[1])
+				node.AddChild(opt.Some(byte(0)), children[0])
+				node.AddChild(opt.Some(byte(255)), children[1])
 
 				So(node.NumChildren, ShouldEqual, 2)
 				So(node.Children[0], ShouldEqual, children[0].Ref())
@@ -74,12 +75,12 @@ func TestNode256(t *testing.T) {
 			children := make([]*Leaf[any], 10)
 			for i := 0; i < 10; i++ {
 				children[i] = NewLeaf[any](a, []byte{byte(i * 25)}, nil)
-				node.AddChild(byte(i*25), children[i])
+				node.AddChild(opt.Some(byte(i*25)), children[i])
 			}
 
 			Convey("Finding existing children", func() {
 				for i := 0; i < 10; i++ {
-					found := node.FindChild(byte(i * 25))
+					found := node.FindChild(opt.Some(byte(i * 25)))
 					So(found, ShouldNotBeNil)
 					So(*found, ShouldEqual, children[i].Ref())
 				}
@@ -87,14 +88,14 @@ func TestNode256(t *testing.T) {
 
 			Convey("Finding non-existent children", func() {
 				// Test keys that are not in the sparse distribution
-				So(node.FindChild(1), ShouldBeNil)
-				So(node.FindChild(26), ShouldBeNil)
+				So(node.FindChild(opt.Some(byte(1))), ShouldBeNil)
+				So(node.FindChild(opt.Some(byte(26))), ShouldBeNil)
 			})
 
 			Convey("Finding children at boundaries", func() {
 				// Test finding children at byte boundaries
-				So(node.FindChild(0), ShouldNotBeNil)   // First child
-				So(node.FindChild(225), ShouldNotBeNil) // Last child
+				So(node.FindChild(opt.Some(byte(0))), ShouldNotBeNil)   // First child
+				So(node.FindChild(opt.Some(byte(225))), ShouldNotBeNil) // Last child
 			})
 		})
 
@@ -106,7 +107,7 @@ func TestNode256(t *testing.T) {
 			Convey("Node with 10 children is not full", func() {
 				for i := 0; i < 10; i++ {
 					child := NewLeaf[any](a, []byte{byte(i * 25)}, nil)
-					node.AddChild(byte(i*25), child)
+					node.AddChild(opt.Some(byte(i*25)), child)
 				}
 				So(node.Full(), ShouldBeFalse)
 			})
@@ -115,7 +116,7 @@ func TestNode256(t *testing.T) {
 				// Add children to many different positions
 				for i := 0; i < 100; i++ {
 					child := NewLeaf[any](a, []byte{byte(i * 2)}, nil)
-					node.AddChild(byte(i*2), child)
+					node.AddChild(opt.Some(byte(i*2)), child)
 				}
 				So(node.Full(), ShouldBeFalse)
 				So(node.NumChildren, ShouldEqual, 100)
@@ -125,7 +126,7 @@ func TestNode256(t *testing.T) {
 				// Add children to all possible byte positions
 				for i := 0; i < 256; i++ {
 					child := NewLeaf[any](a, []byte{byte(i)}, nil)
-					node.AddChild(byte(i), child)
+					node.AddChild(opt.Some(byte(i)), child)
 				}
 				So(node.Full(), ShouldBeTrue)
 				So(node.NumChildren, ShouldEqual, 256)
@@ -136,7 +137,7 @@ func TestNode256(t *testing.T) {
 			// Setup some children
 			for i := 0; i < 10; i++ {
 				child := NewLeaf[any](a, []byte{byte(i * 25)}, nil)
-				node.AddChild(byte(i*25), child)
+				node.AddChild(opt.Some(byte(i*25)), child)
 			}
 
 			Convey("Growing should return the same node", func() {
@@ -163,9 +164,9 @@ func TestNode256(t *testing.T) {
 				child2 := NewLeaf[any](a, []byte("b"), nil)
 				child3 := NewLeaf[any](a, []byte("c"), nil)
 
-				node.AddChild('c', child3)
-				node.AddChild('a', child1)
-				node.AddChild('b', child2)
+				node.AddChild(opt.Some(byte('c')), child3)
+				node.AddChild(opt.Some(byte('a')), child1)
+				node.AddChild(opt.Some(byte('b')), child2)
 
 				So(node.Minimum(), ShouldEqual, child1)
 				So(node.Maximum(), ShouldEqual, child3)
@@ -183,34 +184,34 @@ func TestNode256_EdgeCases(t *testing.T) {
 			child1 := NewLeaf[any](a, []byte("a"), nil)
 			child2 := NewLeaf[any](a, []byte("a"), nil)
 
-			node.AddChild('a', child1)
+			node.AddChild(opt.Some(byte('a')), child1)
 			So(node.NumChildren, ShouldEqual, 1)
 
-			node.AddChild('a', child2)
+			node.AddChild(opt.Some(byte('a')), child2)
 			So(node.NumChildren, ShouldEqual, 1) // Count doesn't change
 
 			// Should replace the existing child
-			found := node.FindChild('a')
+			found := node.FindChild(opt.Some(byte('a')))
 			So(found, ShouldNotBeNil)
 			So(*found, ShouldEqual, child2.Ref())
 		})
 
 		Convey("When adding zero byte key", func() {
 			child := NewLeaf[any](a, []byte{0}, nil)
-			node.AddChild(0, child)
+			node.AddChild(opt.Some(byte(0)), child)
 
 			So(node.NumChildren, ShouldEqual, 1)
-			found := node.FindChild(0)
+			found := node.FindChild(opt.Some(byte(0)))
 			So(found, ShouldNotBeNil)
 			So(*found, ShouldEqual, child.Ref())
 		})
 
 		Convey("When adding 255 byte key", func() {
 			child := NewLeaf[any](a, []byte{255}, nil)
-			node.AddChild(255, child)
+			node.AddChild(opt.Some(byte(255)), child)
 
 			So(node.NumChildren, ShouldEqual, 1)
-			found := node.FindChild(255)
+			found := node.FindChild(opt.Some(byte(255)))
 			So(found, ShouldNotBeNil)
 			So(*found, ShouldEqual, child.Ref())
 		})
@@ -220,13 +221,13 @@ func TestNode256_EdgeCases(t *testing.T) {
 			sparseKeys := []byte{0, 64, 128, 192, 255}
 			for i, key := range sparseKeys {
 				child := NewLeaf[any](a, []byte{key}, nil)
-				node.AddChild(key, child)
+				node.AddChild(opt.Some(key), child)
 				So(node.NumChildren, ShouldEqual, i+1)
 			}
 
 			// Verify all sparse children can be found
 			for _, key := range sparseKeys {
-				found := node.FindChild(key)
+				found := node.FindChild(opt.Some(key))
 				So(found, ShouldNotBeNil)
 				So(*found, ShouldNotEqual, Ref[any](0))
 			}
@@ -236,7 +237,7 @@ func TestNode256_EdgeCases(t *testing.T) {
 			// Test adding children to every possible byte position
 			for i := 0; i < 256; i++ {
 				child := NewLeaf[any](a, []byte{byte(i)}, nil)
-				node.AddChild(byte(i), child)
+				node.AddChild(opt.Some(byte(i)), child)
 			}
 
 			So(node.NumChildren, ShouldEqual, 256)
@@ -244,7 +245,7 @@ func TestNode256_EdgeCases(t *testing.T) {
 
 			// Verify all children can be found
 			for i := 0; i < 256; i++ {
-				found := node.FindChild(byte(i))
+				found := node.FindChild(opt.Some(byte(i)))
 				So(found, ShouldNotBeNil)
 				So(*found, ShouldNotEqual, Ref[any](0))
 			}
@@ -262,7 +263,7 @@ func TestNode256_Performance(t *testing.T) {
 			children := make([]*Leaf[any], 100)
 			for i := 0; i < 100; i++ {
 				children[i] = NewLeaf[any](a, []byte{byte(i * 2)}, nil)
-				node.AddChild(byte(i*2), children[i])
+				node.AddChild(opt.Some(byte(i*2)), children[i])
 			}
 
 			So(node.NumChildren, ShouldEqual, 100)
@@ -270,7 +271,7 @@ func TestNode256_Performance(t *testing.T) {
 
 			// Verify all children can be found
 			for i := 0; i < 100; i++ {
-				found := node.FindChild(byte(i * 2))
+				found := node.FindChild(opt.Some(byte(i * 2)))
 				So(found, ShouldNotBeNil)
 				So(*found, ShouldEqual, children[i].Ref())
 			}
@@ -282,18 +283,18 @@ func TestNode256_Performance(t *testing.T) {
 			sparseChildren := make([]*Leaf[any], len(sparseKeys))
 			for i, key := range sparseKeys {
 				sparseChildren[i] = NewLeaf[any](a, []byte{key}, nil)
-				node.AddChild(key, sparseChildren[i])
+				node.AddChild(opt.Some(key), sparseChildren[i])
 			}
 
 			// Test finding existing and non-existing keys
 			for _, key := range sparseKeys {
-				So(node.FindChild(key), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(key)), ShouldNotBeNil)
 			}
 
 			// Test some non-existing keys
-			So(node.FindChild(2), ShouldBeNil)
-			So(node.FindChild(8), ShouldBeNil)
-			So(node.FindChild(16), ShouldBeNil)
+			So(node.FindChild(opt.Some(byte(2))), ShouldBeNil)
+			So(node.FindChild(opt.Some(byte(8))), ShouldBeNil)
+			So(node.FindChild(opt.Some(byte(16))), ShouldBeNil)
 		})
 
 		Convey("When testing direct array access", func() {
@@ -301,8 +302,8 @@ func TestNode256_Performance(t *testing.T) {
 			child1 := NewLeaf[any](a, []byte{100}, nil)
 			child2 := NewLeaf[any](a, []byte{200}, nil)
 
-			node.AddChild(100, child1)
-			node.AddChild(200, child2)
+			node.AddChild(opt.Some(byte(100)), child1)
+			node.AddChild(opt.Some(byte(200)), child2)
 
 			So(node.Children[100], ShouldEqual, child1.Ref())
 			So(node.Children[200], ShouldEqual, child2.Ref())
@@ -315,17 +316,17 @@ func TestNode256_Performance(t *testing.T) {
 
 			// Add a child
 			child := NewLeaf[any](a, []byte{100}, nil)
-			node.AddChild(100, child)
+			node.AddChild(opt.Some(byte(100)), child)
 			So(node.NumChildren, ShouldEqual, 1)
 
 			// Replace the same key
 			child2 := NewLeaf[any](a, []byte{100}, nil)
-			node.AddChild(100, child2)
+			node.AddChild(opt.Some(byte(100)), child2)
 			So(node.NumChildren, ShouldEqual, 1) // Count shouldn't change
 
 			// Add a different key
 			child3 := NewLeaf[any](a, []byte{200}, nil)
-			node.AddChild(200, child3)
+			node.AddChild(opt.Some(byte(200)), child3)
 			So(node.NumChildren, ShouldEqual, 2)
 		})
 	})
@@ -340,23 +341,23 @@ func TestNode256_RemoveChild(t *testing.T) {
 		children := make([]*Leaf[any], 10)
 		for i := 0; i < 10; i++ {
 			children[i] = NewLeaf[any](a, []byte{byte(i * 25)}, nil)
-			node.AddChild(byte(i*25), children[i])
+			node.AddChild(opt.Some(byte(i*25)), children[i])
 		}
 
 		So(node.NumChildren, ShouldEqual, 10)
 
 		Convey("When removing the first child", func() {
-			childRef := node.FindChild(0)
+			childRef := node.FindChild(opt.Some(byte(0)))
 			So(childRef, ShouldNotBeNil)
 
-			node.RemoveChild(0, childRef)
+			node.RemoveChild(opt.Some(byte(0)), childRef)
 
 			Convey("Then NumChildren should be decremented", func() {
 				So(node.NumChildren, ShouldEqual, 9)
 			})
 
 			Convey("And the child should not be found", func() {
-				So(node.FindChild(0), ShouldBeNil)
+				So(node.FindChild(opt.Some(byte(0))), ShouldBeNil)
 			})
 
 			Convey("And the child reference should be cleared", func() {
@@ -364,24 +365,24 @@ func TestNode256_RemoveChild(t *testing.T) {
 			})
 
 			Convey("And remaining children should still be accessible", func() {
-				So(node.FindChild(25), ShouldNotBeNil)
-				So(node.FindChild(50), ShouldNotBeNil)
-				So(node.FindChild(75), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(25))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(50))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(75))), ShouldNotBeNil)
 			})
 		})
 
 		Convey("When removing the middle child", func() {
-			childRef := node.FindChild(50)
+			childRef := node.FindChild(opt.Some(byte(50)))
 			So(childRef, ShouldNotBeNil)
 
-			node.RemoveChild(50, childRef)
+			node.RemoveChild(opt.Some(byte(50)), childRef)
 
 			Convey("Then NumChildren should be decremented", func() {
 				So(node.NumChildren, ShouldEqual, 9)
 			})
 
 			Convey("And the child should not be found", func() {
-				found := node.FindChild(50)
+				found := node.FindChild(opt.Some(byte(50)))
 				So(found, ShouldBeNil)
 			})
 
@@ -390,24 +391,24 @@ func TestNode256_RemoveChild(t *testing.T) {
 			})
 
 			Convey("And remaining children should still be accessible", func() {
-				So(node.FindChild(0), ShouldNotBeNil)
-				So(node.FindChild(25), ShouldNotBeNil)
-				So(node.FindChild(75), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(0))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(25))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(75))), ShouldNotBeNil)
 			})
 		})
 
 		Convey("When removing the last child", func() {
-			childRef := node.FindChild(225)
+			childRef := node.FindChild(opt.Some(byte(225)))
 			So(childRef, ShouldNotBeNil)
 
-			node.RemoveChild(225, childRef)
+			node.RemoveChild(opt.Some(byte(225)), childRef)
 
 			Convey("Then NumChildren should be decremented", func() {
 				So(node.NumChildren, ShouldEqual, 9)
 			})
 
 			Convey("And the child should not be found", func() {
-				So(node.FindChild(225), ShouldBeNil)
+				So(node.FindChild(opt.Some(byte(225))), ShouldBeNil)
 			})
 
 			Convey("And the child reference should be cleared", func() {
@@ -415,39 +416,39 @@ func TestNode256_RemoveChild(t *testing.T) {
 			})
 
 			Convey("And remaining children should still be accessible", func() {
-				So(node.FindChild(0), ShouldNotBeNil)
-				So(node.FindChild(25), ShouldNotBeNil)
-				So(node.FindChild(50), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(0))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(25))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(50))), ShouldNotBeNil)
 			})
 		})
 
 		Convey("When removing multiple children", func() {
 			// Remove 25 first
-			childRef := node.FindChild(25)
-			node.RemoveChild(25, childRef)
+			childRef := node.FindChild(opt.Some(byte(25)))
+			node.RemoveChild(opt.Some(byte(25)), childRef)
 
 			// Remove 100 second
-			childRef = node.FindChild(100)
-			node.RemoveChild(100, childRef)
+			childRef = node.FindChild(opt.Some(byte(100)))
+			node.RemoveChild(opt.Some(byte(100)), childRef)
 
 			Convey("Then NumChildren should be 8", func() {
 				So(node.NumChildren, ShouldEqual, 8)
 			})
 
 			Convey("And removed children should not be found", func() {
-				So(node.FindChild(25), ShouldBeNil)
-				So(node.FindChild(100), ShouldBeNil)
+				So(node.FindChild(opt.Some(byte(25))), ShouldBeNil)
+				So(node.FindChild(opt.Some(byte(100))), ShouldBeNil)
 			})
 
 			Convey("And remaining children should still be accessible", func() {
-				So(node.FindChild(0), ShouldNotBeNil)
-				So(node.FindChild(50), ShouldNotBeNil)
-				So(node.FindChild(75), ShouldNotBeNil)
-				So(node.FindChild(125), ShouldNotBeNil)
-				So(node.FindChild(150), ShouldNotBeNil)
-				So(node.FindChild(175), ShouldNotBeNil)
-				So(node.FindChild(200), ShouldNotBeNil)
-				So(node.FindChild(225), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(0))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(50))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(75))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(125))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(150))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(175))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(200))), ShouldNotBeNil)
+				So(node.FindChild(opt.Some(byte(225))), ShouldNotBeNil)
 			})
 
 			Convey("And child references should be properly cleared", func() {
@@ -469,7 +470,7 @@ func TestNode256_Shrink(t *testing.T) {
 			// Add 40 children
 			for i := 0; i < 40; i++ {
 				child := NewLeaf[any](a, []byte{byte(i * 6)}, nil)
-				node.AddChild(byte(i*6), child)
+				node.AddChild(opt.Some(byte(i*6)), child)
 			}
 
 			So(node.NumChildren, ShouldEqual, 40)
@@ -489,7 +490,7 @@ func TestNode256_Shrink(t *testing.T) {
 			// Add 36 children
 			for i := 0; i < 36; i++ {
 				child := NewLeaf[any](a, []byte{byte(i * 7)}, nil)
-				node.AddChild(byte(i*7), child)
+				node.AddChild(opt.Some(byte(i*7)), child)
 			}
 
 			So(node.NumChildren, ShouldEqual, 36)
@@ -508,7 +509,7 @@ func TestNode256_Shrink(t *testing.T) {
 				// Verify all children are accessible
 				for i := 0; i < 36; i++ {
 					key := byte(i * 7)
-					found := node48.FindChild(key)
+					found := node48.FindChild(opt.Some(key))
 					So(found, ShouldNotBeNil)
 				}
 			})
@@ -518,7 +519,7 @@ func TestNode256_Shrink(t *testing.T) {
 			// Add 35 children
 			for i := 0; i < 35; i++ {
 				child := NewLeaf[any](a, []byte{byte(i * 7)}, nil)
-				node.AddChild(byte(i*7), child)
+				node.AddChild(opt.Some(byte(i*7)), child)
 			}
 
 			So(node.NumChildren, ShouldEqual, 35)
@@ -537,7 +538,7 @@ func TestNode256_Shrink(t *testing.T) {
 				// Verify all children are accessible
 				for i := 0; i < 35; i++ {
 					key := byte(i * 7)
-					found := node48.FindChild(key)
+					found := node48.FindChild(opt.Some(key))
 					So(found, ShouldNotBeNil)
 				}
 			})
@@ -551,7 +552,7 @@ func TestNode256_Shrink(t *testing.T) {
 		Convey("When shrinking with exactly 1 child", func() {
 			child := NewLeaf[any](a, []byte("+a"), nil)
 
-			node.AddChild('a', child)
+			node.AddChild(opt.Some(byte('a')), child)
 
 			So(node.NumChildren, ShouldEqual, 1)
 
@@ -565,7 +566,7 @@ func TestNode256_Shrink(t *testing.T) {
 			Convey("And the new Node48 should have the same child", func() {
 				node48 := result.(*Node48[any])
 				So(node48.NumChildren, ShouldEqual, 1)
-				found := node48.FindChild('a')
+				found := node48.FindChild(opt.Some(byte('a')))
 				So(found, ShouldNotBeNil)
 				So(*found, ShouldEqual, child.Ref())
 			})
@@ -592,7 +593,7 @@ func TestNode256_Shrink(t *testing.T) {
 			sparseKeys := []byte{0, 64, 128, 192, 255}
 			for _, key := range sparseKeys {
 				child := NewLeaf[any](a, []byte{key}, nil)
-				node.AddChild(key, child)
+				node.AddChild(opt.Some(key), child)
 			}
 
 			So(node.NumChildren, ShouldEqual, 5)
@@ -610,7 +611,7 @@ func TestNode256_Shrink(t *testing.T) {
 
 				// Verify all sparse children are accessible
 				for _, key := range sparseKeys {
-					found := node48.FindChild(key)
+					found := node48.FindChild(opt.Some(key))
 					So(found, ShouldNotBeNil)
 				}
 			})

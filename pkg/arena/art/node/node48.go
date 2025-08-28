@@ -4,6 +4,7 @@ import (
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/art/simd"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 // Node48 represents a node in an adaptive radix tree that can store up to 48 children.
@@ -43,7 +44,7 @@ type Node48[T any] struct {
 	// Base embeds the common functionality shared by all node types.
 	//
 	// This includes the shared prefix and child count.
-	Base
+	Base[T]
 
 	// Keys maps key bytes to indices in the Children array.
 	//
@@ -164,8 +165,18 @@ func (n *Node48[T]) Maximum() *Leaf[T] {
 //   - Check Keys[b] for valid child index (non-zero)
 //   - If valid, access Children[Keys[b]-1] (1-based indexing)
 //   - Return child reference or nil if not found
-func (n *Node48[T]) FindChild(b byte) *Ref[T] {
-	if idx := n.Keys[b]; idx != 0 {
+func (n *Node48[T]) FindChild(b opt.Option[byte]) *Ref[T] {
+	if b.IsNone() {
+		if n.ZeroSizedChild.Empty() {
+			return nil
+		}
+
+		return &n.ZeroSizedChild
+	}
+
+	k := b.Unwrap()
+
+	if idx := n.Keys[k]; idx != 0 {
 		return &n.Children[idx-1]
 	}
 
@@ -197,11 +208,20 @@ func (n *Node48[T]) FindChild(b byte) *Ref[T] {
 //   - Time complexity: O(1) for replacement, O(48) for new child
 //   - Space complexity: O(1)
 //   - Memory operations: Direct assignment to sparse arrays
-func (n *Node48[T]) AddChild(b byte, child AsRef[T]) {
+func (n *Node48[T]) AddChild(b opt.Option[byte], child AsRef[T]) {
+	if b.IsNone() {
+		n.ZeroSizedChild = child.Ref()
+
+		return
+	}
+
+	k := b.Unwrap()
+
 	// Check if key already exists
-	if idx := n.Keys[b]; idx != 0 {
+	if idx := n.Keys[k]; idx != 0 {
 		// Replace existing child
 		n.Children[idx-1] = child.Ref()
+
 		return
 	}
 
@@ -216,7 +236,7 @@ func (n *Node48[T]) AddChild(b byte, child AsRef[T]) {
 	}
 
 	// Map the key byte to the slot using 1-based indexing
-	n.Keys[b] = i + 1
+	n.Keys[k] = i + 1
 	n.Children[i] = child.Ref()
 	n.NumChildren++
 }
@@ -284,15 +304,25 @@ func (n *Node48[T]) Grow(a arena.Allocator) Node[T] {
 //   - Time complexity: O(1) - direct array access
 //   - Space complexity: O(1)
 //   - Memory operations: Two array assignments
-func (n *Node48[T]) RemoveChild(b byte, child *Ref[T]) {
+func (n *Node48[T]) RemoveChild(b opt.Option[byte], child *Ref[T]) {
+	if b.IsNone() {
+		if &n.ZeroSizedChild == child {
+			n.ZeroSizedChild = 0
+		}
+
+		return
+	}
+
+	k := b.Unwrap()
+
 	// Find the position of the child in the Children array
-	idx := n.Keys[b]
+	idx := n.Keys[k]
 	if idx == 0 {
 		return // Key doesn't exist
 	}
 
 	// Clear the key and child
-	n.Keys[b] = 0
+	n.Keys[k] = 0
 	n.Children[idx-1] = 0
 	n.NumChildren--
 }

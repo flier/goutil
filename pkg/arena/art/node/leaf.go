@@ -4,6 +4,7 @@ import (
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/slice"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 // Leaf represents a leaf node in the Adaptive Radix Tree (ART).
@@ -124,19 +125,19 @@ func (l *Leaf[T]) Maximum() *Leaf[T] { return l }
 //
 // If this method is called, it indicates a programming error in the tree
 // implementation or usage.
-func (l *Leaf[T]) FindChild(b byte) *Ref[T] { panic("leaf cannot have children") }
+func (l *Leaf[T]) FindChild(b opt.Option[byte]) *Ref[T] { panic("leaf cannot have children") }
 
 // AddChild panics since leaf nodes cannot have children.
 //
 // If this method is called, it indicates a programming error in the tree
 // implementation or usage.
-func (l *Leaf[T]) AddChild(b byte, child AsRef[T]) { panic("leaf cannot have children") }
+func (l *Leaf[T]) AddChild(b opt.Option[byte], child AsRef[T]) { panic("leaf cannot have children") }
 
 // RemoveChild panics since leaf nodes cannot have children.
 //
 // If this method is called, it indicates a programming error in the tree
 // implementation or usage.
-func (l *Leaf[T]) RemoveChild(b byte, child *Ref[T]) { panic("leaf cannot have children") }
+func (l *Leaf[T]) RemoveChild(b opt.Option[byte], child *Ref[T]) { panic("leaf cannot have children") }
 
 // Grow panics since leaf nodes cannot have children.
 //

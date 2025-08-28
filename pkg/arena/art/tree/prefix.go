@@ -21,19 +21,19 @@ func LongestCommonPrefix(l slice.Slice[byte], r slice.Slice[byte], depth int) (i
 // PrefixMismatch checks if the key has the same prefix as the partial.
 //
 // It returns the number of characters that match.
-func PrefixMismatch[T any](n node.Node[T], key slice.Slice[byte], depth int) (i int) {
+func PrefixMismatch[T any](n node.Node[T], key []byte, depth int) (i int) {
 	partial := n.Prefix()
 
-	for ; i < min(partial.Len(), key.Len()-depth); i++ {
-		if partial.Load(i) != key.Load(depth+i) {
+	for ; i < min(partial.Len(), len(key)-depth); i++ {
+		if partial.Load(i) != key[depth+i] {
 			return
 		}
 	}
 
 	// If we have a minimum leaf, continue checking
 	if l := n.Minimum(); l != nil {
-		for ; i < min(l.Key.Len(), key.Len())-depth; i++ {
-			if l.Key.Load(depth+i) != key.Load(depth+i) {
+		for ; i < min(l.Key.Len(), len(key))-depth; i++ {
+			if l.Key.Load(depth+i) != key[depth+i] {
 				return
 			}
 		}

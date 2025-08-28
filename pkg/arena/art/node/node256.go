@@ -2,6 +2,7 @@ package node
 
 import (
 	"github.com/flier/goutil/pkg/arena"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 // Node256 represents the largest node type in an adaptive radix tree, capable of
@@ -42,7 +43,7 @@ type Node256[T any] struct {
 	// Base embeds the common functionality shared by all node types.
 	//
 	// This includes the shared prefix and child count.
-	Base
+	Base[T]
 
 	// Children stores child node references in a direct array mapping.
 	//
@@ -163,9 +164,19 @@ func (n *Node256[T]) Maximum() *Leaf[T] {
 //   - Direct array access: Children[b]
 //   - Check if reference is non-zero
 //   - Return pointer to reference or nil
-func (n *Node256[T]) FindChild(b byte) *Ref[T] {
-	if !n.Children[b].Empty() {
-		return &n.Children[b]
+func (n *Node256[T]) FindChild(b opt.Option[byte]) *Ref[T] {
+	if b.IsNone() {
+		if n.ZeroSizedChild.Empty() {
+			return nil
+		}
+
+		return &n.ZeroSizedChild
+	}
+
+	k := b.Unwrap()
+
+	if !n.Children[k].Empty() {
+		return &n.Children[k]
 	}
 
 	return nil
@@ -198,12 +209,20 @@ func (n *Node256[T]) FindChild(b byte) *Ref[T] {
 //   - Space complexity: O(1)
 //   - Memory operations: Single array assignment
 //   - No shifting or reordering overhead
-func (n *Node256[T]) AddChild(b byte, child AsRef[T]) {
-	if n.Children[b] == 0 {
+func (n *Node256[T]) AddChild(b opt.Option[byte], child AsRef[T]) {
+	if b.IsNone() {
+		n.ZeroSizedChild = child.Ref()
+
+		return
+	}
+
+	k := b.Unwrap()
+
+	if n.Children[k] == 0 {
 		n.NumChildren++
 	}
 
-	n.Children[b] = child.Ref()
+	n.Children[k] = child.Ref()
 }
 
 // Grow is a no-op for Node256 as it is the largest node type.
@@ -248,8 +267,18 @@ func (n *Node256[T]) Grow(arena.Allocator) Node[T] {
 //   - Time complexity: O(1) - direct array assignment
 //   - Space complexity: O(1)
 //   - Memory operations: Single array assignment
-func (n *Node256[T]) RemoveChild(b byte, child *Ref[T]) {
-	n.Children[b] = 0
+func (n *Node256[T]) RemoveChild(b opt.Option[byte], child *Ref[T]) {
+	if b.IsNone() {
+		if &n.ZeroSizedChild == child {
+			n.ZeroSizedChild = 0
+		}
+
+		return
+	}
+
+	k := b.Unwrap()
+
+	n.Children[k] = 0
 	n.NumChildren--
 }
 

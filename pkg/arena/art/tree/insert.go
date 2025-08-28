@@ -5,6 +5,7 @@ import (
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/art/node"
 	"github.com/flier/goutil/pkg/arena/slice"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 func RecursiveInsert[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
@@ -57,8 +58,8 @@ func InsertToLeaf[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T]
 	}
 
 	// Add the leafs to the new node4
-	newNode.AddChild(leaf.Key.CheckedLoad(depth).UnwrapOrDefault(), leaf)
-	newNode.AddChild(curr.Key.CheckedLoad(depth).UnwrapOrDefault(), ref)
+	newNode.AddChild(leaf.Key.CheckedLoad(depth), leaf)
+	newNode.AddChild(curr.Key.CheckedLoad(depth), ref)
 
 	ref.Replace(newNode)
 
@@ -81,7 +82,7 @@ func InsertToNode[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T]
 
 	// If the node has a prefix, we need to check if the key has the same prefix
 	if partial := n.Prefix(); !partial.Empty() {
-		if diff := PrefixMismatch(n, leaf.Key, depth); diff >= partial.Len() {
+		if diff := PrefixMismatch(n, leaf.Key.Raw(), depth); diff >= partial.Len() {
 			depth += partial.Len()
 		} else {
 			// If the key has the same prefix, we need to add the prefix to the new node
@@ -89,11 +90,11 @@ func InsertToNode[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T]
 			newNode.Partial = partial.Slice(0, diff).Clone(a)
 
 			// Add the current node to the new node
-			newNode.AddChild(n.Prefix().CheckedLoad(diff).UnwrapOrDefault(), n)
+			newNode.AddChild(n.Prefix().CheckedLoad(diff), n)
 			n.SetPrefix(partial.Slice(diff+1, partial.Len()))
 
 			// Add the leaf to the new node
-			newNode.AddChild(leaf.Key.CheckedLoad(depth+diff).UnwrapOrDefault(), leaf)
+			newNode.AddChild(leaf.Key.CheckedLoad(depth+diff), leaf)
 
 			ref.Replace(newNode)
 
@@ -101,7 +102,7 @@ func InsertToNode[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T]
 		}
 	}
 
-	key := leaf.Key.CheckedLoad(depth).UnwrapOrDefault()
+	key := leaf.Key.CheckedLoad(depth)
 
 	// If the child is found, we need to recurse
 	if child := n.FindChild(key); child != nil && !child.Empty() {
@@ -113,7 +114,7 @@ func InsertToNode[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T]
 	return nil
 }
 
-func AddChild[T any](a arena.Allocator, ref *node.Ref[T], key byte, leaf *node.Leaf[T]) {
+func AddChild[T any](a arena.Allocator, ref *node.Ref[T], key opt.Option[byte], leaf *node.Leaf[T]) {
 	debug.Assert(ref.IsNode(), "current node must be a node")
 
 	curr := ref.AsNode()

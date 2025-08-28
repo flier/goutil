@@ -426,7 +426,7 @@ func (a *Arena) KeepAlive(v any) {
 
 // Alloc allocates memory with the given size.
 //
-// All memory is pointer-aligned. If zero is true, the memory will be zeroed.
+// All memory is pointer-aligned. The memory may be uninitialized.
 //
 // Do not use this method directly, use [New] instead.
 func (a *Arena) Alloc(size int) *byte {
@@ -469,6 +469,10 @@ func (a *Arena) Reserve(size int) {
 // trades off safety: any memory allocated by the arena must not be referenced
 // after a call to Reset.
 func (a *Arena) Reset() {
+	if len(a.blocks) == 0 {
+		return
+	}
+
 	// Discard all but the largest block, which we clear. This means that as
 	// an arena is re-used, we will eventually wind up learning the size of the
 	// largest block we need to allocate, and use only that one, meaning that

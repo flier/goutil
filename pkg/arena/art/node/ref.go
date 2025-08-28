@@ -322,5 +322,5 @@ func (r *Ref[T]) Replace(new AsRef[T]) (current Node[T]) {
 //   - Type checking should be performed before using this method
 //   - This method is primarily used internally by the type-safe accessors
 func (r Ref[T]) ptr() unsafe.Pointer {
-	return unsafe.Pointer(uintptr(r) & nodePtrMask) //nolint:govet
+	return unsafe.Pointer(xunsafe.Addr[byte](uintptr(r) & nodePtrMask).AssertValid())
 }

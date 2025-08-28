@@ -4,6 +4,7 @@ import (
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/art/simd"
+	"github.com/flier/goutil/pkg/opt"
 	"github.com/flier/goutil/pkg/xunsafe"
 )
 
@@ -41,7 +42,7 @@ type Node16[T any] struct {
 	// Base embeds the common functionality shared by all node types.
 	//
 	// This includes the shared prefix and child count.
-	Base
+	Base[T]
 
 	// Keys stores the key bytes in ascending order.
 	//
@@ -141,8 +142,18 @@ func (n *Node16[T]) Maximum() *Leaf[T] {
 //   - SIMD-optimized search through sorted keys array
 //   - Early termination on match
 //   - Returns corresponding child reference
-func (n *Node16[T]) FindChild(b byte) *Ref[T] {
-	if i := simd.FindKeyIndex(&n.Keys, n.NumChildren, b); i >= 0 {
+func (n *Node16[T]) FindChild(b opt.Option[byte]) *Ref[T] {
+	if b.IsNone() {
+		if n.ZeroSizedChild.Empty() {
+			return nil
+		}
+
+		return &n.ZeroSizedChild
+	}
+
+	k := b.Unwrap()
+
+	if i := simd.FindKeyIndex(&n.Keys, n.NumChildren, k); i >= 0 {
 		return &n.Children[i]
 	}
 
@@ -177,22 +188,33 @@ func (n *Node16[T]) FindChild(b byte) *Ref[T] {
 //   - Space complexity: O(1) (fixed array size)
 //   - Memory operations: Array shifting for sorted order
 //   - SIMD acceleration: For finding insertion position
-func (n *Node16[T]) AddChild(b byte, child AsRef[T]) {
+func (n *Node16[T]) AddChild(b opt.Option[byte], child AsRef[T]) {
+	if b.IsNone() {
+		n.ZeroSizedChild = child.Ref()
+
+		return
+	}
+
+	k := b.Unwrap()
+
 	debug.Assert(!n.Full(), "node must not be full")
 
-	// Check if key already exists using SIMD-optimized search
-	i := simd.FindInsertPosition(&n.Keys, n.NumChildren, b)
-	if i >= 0 {
-		// Key exists, shift elements to make room for insertion
-		copy(n.Keys[i+1:], n.Keys[i:])
-		copy(n.Children[i+1:], n.Children[i:])
-	} else {
-		// Key doesn't exist, insert at the end
-		i = n.NumChildren
+	var i int
+
+	if n.NumChildren > 0 {
+		// Check if key already exists using SIMD-optimized search
+		if i = simd.FindInsertPosition(&n.Keys, n.NumChildren, k); i >= 0 {
+			// Key exists, shift elements to make room for insertion
+			copy(n.Keys[i+1:], n.Keys[i:])
+			copy(n.Children[i+1:], n.Children[i:])
+		} else {
+			// Key doesn't exist, insert at the end
+			i = n.NumChildren
+		}
 	}
 
 	// Insert the new key and child at the correct position
-	n.Keys[i] = b
+	n.Keys[i] = k
 	n.Children[i] = child.Ref()
 	n.NumChildren++
 }
@@ -262,7 +284,15 @@ func (n *Node16[T]) Grow(a arena.Allocator) Node[T] {
 //   - Time complexity: O(n) where n is the number of children
 //   - Space complexity: O(1)
 //   - Memory operations: Array shifting to maintain order
-func (n *Node16[T]) RemoveChild(b byte, child *Ref[T]) {
+func (n *Node16[T]) RemoveChild(b opt.Option[byte], child *Ref[T]) {
+	if b.IsNone() {
+		if &n.ZeroSizedChild == child {
+			n.ZeroSizedChild = 0
+		}
+
+		return
+	}
+
 	// Calculate the position of the child in the arrays
 	pos := xunsafe.AddrOf(child).Sub(xunsafe.AddrOf(&n.Children[0]))
 

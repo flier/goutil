@@ -3,6 +3,7 @@ package node
 import (
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
+	"github.com/flier/goutil/pkg/opt"
 	"github.com/flier/goutil/pkg/xunsafe"
 )
 
@@ -35,7 +36,7 @@ import (
 type Node4[T any] struct {
 	// Base embeds the common functionality shared by all node types.
 	// This includes the shared prefix and child count.
-	Base
+	Base[T]
 
 	// Keys stores the key bytes in ascending order.
 	//
@@ -131,9 +132,19 @@ func (n *Node4[T]) Maximum() *Leaf[T] {
 //   - Linear search through sorted keys array
 //   - Early termination on match
 //   - Returns corresponding child reference
-func (n *Node4[T]) FindChild(b byte) *Ref[T] {
+func (n *Node4[T]) FindChild(b opt.Option[byte]) *Ref[T] {
+	if b.IsNone() {
+		if n.ZeroSizedChild.Empty() {
+			return nil
+		}
+
+		return &n.ZeroSizedChild
+	}
+
+	k := b.Unwrap()
+
 	for i := 0; i < n.NumChildren; i++ {
-		if n.Keys[i] == b {
+		if n.Keys[i] == k {
 			return &n.Children[i]
 		}
 	}
@@ -165,24 +176,34 @@ func (n *Node4[T]) FindChild(b byte) *Ref[T] {
 //   - Time complexity: O(n) where n is the number of children
 //   - Space complexity: O(1) (fixed array size)
 //   - Memory operations: Array shifting for sorted order
-func (n *Node4[T]) AddChild(b byte, child AsRef[T]) {
+func (n *Node4[T]) AddChild(b opt.Option[byte], child AsRef[T]) {
+	if b.IsNone() {
+		n.ZeroSizedChild = child.Ref()
+
+		return
+	}
+
 	debug.Assert(!n.Full(), "node must not be full")
+
+	k := b.Unwrap()
 
 	var i int
 
-	// Find the correct insertion position to maintain sorted order
-	for ; i < n.NumChildren; i++ {
-		if b < n.Keys[i] {
-			break
+	if n.NumChildren > 0 {
+		// Find the correct insertion position to maintain sorted order
+		for ; i < n.NumChildren; i++ {
+			if k < n.Keys[i] {
+				break
+			}
 		}
+
+		// Shift existing keys and children to make room for the new entry
+		copy(n.Keys[i+1:], n.Keys[i:])
+		copy(n.Children[i+1:], n.Children[i:])
 	}
 
-	// Shift existing keys and children to make room for the new entry
-	copy(n.Keys[i+1:], n.Keys[i:])
-	copy(n.Children[i+1:], n.Children[i:])
-
 	// Insert the new key and child at the correct position
-	n.Keys[i] = b
+	n.Keys[i] = k
 	n.Children[i] = child.Ref()
 	n.NumChildren++
 }
@@ -240,7 +261,15 @@ func (n *Node4[T]) Grow(a arena.Allocator) Node[T] {
 //   - Time complexity: O(n) where n is the number of children
 //   - Space complexity: O(1)
 //   - Memory operations: Array shifting to maintain order
-func (n *Node4[T]) RemoveChild(b byte, child *Ref[T]) {
+func (n *Node4[T]) RemoveChild(b opt.Option[byte], child *Ref[T]) {
+	if b.IsNone() {
+		if &n.ZeroSizedChild == child {
+			n.ZeroSizedChild = 0
+		}
+
+		return
+	}
+
 	// Calculate the position of the child in the arrays
 	pos := xunsafe.AddrOf(child).Sub(xunsafe.AddrOf(&n.Children[0]))
 

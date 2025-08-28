@@ -24,6 +24,7 @@ package node
 import (
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/slice"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 // Type represents the type identifier for different node implementations in the ART tree.
@@ -134,21 +135,21 @@ type Node[T any] interface {
 	//
 	// The key byte represents the next character in the key being searched.
 	// This method is the core of tree traversal and search operations.
-	FindChild(b byte) *Ref[T]
+	FindChild(b opt.Option[byte]) *Ref[T]
 
 	// AddChild adds a new child node to this node, associating it with the given key byte.
 	// If the node becomes full, it may need to grow to a larger node type.
 	//
 	// The child parameter must implement AsRef[T] to provide a reference interface.
 	// If a child with the same key already exists, it will be replaced.
-	AddChild(b byte, child AsRef[T])
+	AddChild(b opt.Option[byte], child AsRef[T])
 
 	// RemoveChild removes the child node associated with the given key byte.
 	//
 	// The child parameter is used to verify the removal operation and may trigger
 	// node shrinking if the remaining children are few enough.
 	// This method maintains the tree's structural integrity during deletions.
-	RemoveChild(b byte, child *Ref[T])
+	RemoveChild(b opt.Option[byte], child *Ref[T])
 
 	// Grow converts this node to a larger node type when it reaches capacity.
 	//
@@ -180,7 +181,7 @@ type Node[T any] interface {
 // The Base struct is embedded in all concrete node types, providing a foundation
 // for common operations while allowing each node type to implement its own
 // storage strategy for children.
-type Base struct {
+type Base[T any] struct {
 	// Partial stores the shared prefix bytes for this subtree.
 	//
 	// This prefix compression reduces memory usage by storing common
@@ -192,17 +193,20 @@ type Base struct {
 	// This count is used to determine when to grow or shrink the node
 	// and for various tree operations that need to know the node's state.
 	NumChildren int
+
+	// ZeroSizedChild is a special child that is used to represent a zero-sized child.
+	ZeroSizedChild Ref[T]
 }
 
 // Prefix returns the shared prefix bytes for this node.
 //
 // This method satisfies the Node interface requirement for prefix access.
 // The returned slice represents the common prefix shared by all keys in this subtree.
-func (n *Base) Prefix() slice.Slice[byte] { return n.Partial }
+func (n *Base[T]) Prefix() slice.Slice[byte] { return n.Partial }
 
 // SetPrefix updates the shared prefix for this node.
 //
 // This method satisfies the Node interface requirement for prefix modification.
 // The prefix parameter should be a valid slice.Slice[byte] instance.
 // This method is typically called during tree restructuring operations.
-func (n *Base) SetPrefix(prefix slice.Slice[byte]) { n.Partial = prefix }
+func (n *Base[T]) SetPrefix(prefix slice.Slice[byte]) { n.Partial = prefix }

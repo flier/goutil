@@ -10,6 +10,7 @@ import (
 	"github.com/flier/goutil/pkg/arena/art/node"
 	. "github.com/flier/goutil/pkg/arena/art/tree"
 	"github.com/flier/goutil/pkg/arena/slice"
+	"github.com/flier/goutil/pkg/opt"
 )
 
 var (
@@ -105,9 +106,21 @@ func TestInsert(t *testing.T) {
 					n := root.AsNode4()
 					So(n, ShouldNotBeNil)
 					So(n.Partial.Raw(), ShouldEqual, []byte("hell"))
-					So(n.NumChildren, ShouldEqual, 2)
-					So(n.Keys[:], ShouldResemble, []byte{0, 'o', 0, 0})
-					So(n.Children[:], ShouldResemble, []node.Ref[int]{leaf2.Ref(), leaf.Ref(), 0, 0})
+
+					Convey("Then the zero-sized child should be optimized", func() {
+						So(n.ZeroSizedChild.Empty(), ShouldBeFalse)
+
+						l := n.ZeroSizedChild.AsLeaf()
+						So(l, ShouldEqual, leaf2)
+						So(l.Key.Raw(), ShouldResemble, []byte("hell"))
+						So(l.Value, ShouldEqual, 456)
+					})
+
+					Convey("Then the non-zero-sized child should be optimized", func() {
+						So(n.NumChildren, ShouldEqual, 1)
+						So(n.Keys, ShouldResemble, [4]byte{'o', 0, 0, 0})
+						So(n.Children, ShouldResemble, [4]node.Ref[int]{leaf.Ref(), 0, 0, 0})
+					})
 				})
 			})
 		})
@@ -227,42 +240,6 @@ func TestInsertToLeaf(t *testing.T) {
 			})
 		})
 
-		Convey("When inserting a leaf with different key and common prefix at non-zero depth", func() {
-			// Create initial leaf
-			initialLeaf := node.NewLeaf(a, []byte("world"), 123)
-
-			ref := initialLeaf.Ref()
-
-			// Create new leaf with common prefix starting at depth 1
-			newLeaf := node.NewLeaf(a, []byte("xorld"), 456)
-
-			result := InsertToLeaf(a, &ref, newLeaf, 1, false)
-
-			Convey("Then should return null", func() {
-				So(result, ShouldBeNil)
-			})
-
-			Convey("And ref should be replaced with Node4", func() {
-				So(ref.IsNode4(), ShouldBeTrue)
-
-				node4 := ref.AsNode4()
-				So(node4.NumChildren, ShouldEqual, 2)
-
-				Convey("And Node4 should have common prefix from depth 1", func() {
-					// Common prefix from depth 1 is "orld"
-					So(node4.Partial.Raw(), ShouldEqual, []byte("orld"))
-				})
-
-				Convey("And Node4 should contain both leaves with correct keys", func() {
-					// The keys depend on the actual implementation behavior
-					// We just verify that both leaves are present and the structure is correct
-					So(node4.NumChildren, ShouldEqual, 2)
-					So(node4.Children[0], ShouldNotEqual, newLeaf)
-					So(node4.Children[1], ShouldNotEqual, initialLeaf)
-				})
-			})
-		})
-
 		Convey("When inserting a leaf with same prefix", func() {
 			// Create initial leaf
 			initialLeaf := node.NewLeaf(a, hello, 123)
@@ -282,18 +259,19 @@ func TestInsertToLeaf(t *testing.T) {
 				So(ref.IsNode4(), ShouldBeTrue)
 
 				node4 := ref.AsNode4()
-				So(node4.NumChildren, ShouldEqual, 2)
+				So(node4.NumChildren, ShouldEqual, 1)
 
 				Convey("And Node4 should have common prefix", func() {
 					So(node4.Partial.Raw(), ShouldEqual, []byte("hell"))
 				})
 
 				Convey("And Node4 should contain both leaves with correct keys", func() {
+					So(node4.ZeroSizedChild.Empty(), ShouldBeFalse)
+					So(node4.ZeroSizedChild.AsLeaf(), ShouldEqual, newLeaf)
+
 					// At depth 4 (after "hell"), keys are 0 (null terminator) and 'o'
-					So(node4.Keys[0], ShouldEqual, byte(0))
-					So(node4.Keys[1], ShouldEqual, byte('o'))
-					So(node4.Children[0].AsLeaf().Key.Raw(), ShouldResemble, hell)
-					So(node4.Children[1].AsLeaf().Key.Raw(), ShouldResemble, hello)
+					So(node4.Keys, ShouldResemble, [4]byte{'o', 0, 0, 0})
+					So(node4.Children, ShouldResemble, [4]node.Ref[int]{initialLeaf.Ref(), 0, 0, 0})
 				})
 			})
 		})
@@ -431,7 +409,7 @@ func TestInsertToNode(t *testing.T) {
 
 			// Add an existing child
 			existingLeaf := node.NewLeaf(a, hello, 123)
-			node4.AddChild('h', existingLeaf)
+			node4.AddChild(opt.Some(byte('h')), existingLeaf)
 
 			// Create new leaf to insert
 			newLeaf := node.NewLeaf(a, foobar, 456)
@@ -480,7 +458,7 @@ func TestInsertToNode(t *testing.T) {
 
 			// Add an existing child
 			existingLeaf := node.NewLeaf(a, hello, 123)
-			node4.AddChild('l', existingLeaf)
+			node4.AddChild(opt.Some(byte('l')), existingLeaf)
 
 			Convey("And inserting a leaf with matching prefix", func() {
 				// Create leaf with matching prefix "hel"
@@ -510,7 +488,7 @@ func TestInsertToNode(t *testing.T) {
 			// Add 4 children to make it full
 			for i := 0; i < 4; i++ {
 				leaf := node.NewLeaf(a, []byte{byte('a' + i)}, i*100)
-				node4.AddChild(byte('a'+i), leaf)
+				node4.AddChild(opt.Some(byte('a'+i)), leaf)
 			}
 
 			So(node4.Full(), ShouldBeTrue)
@@ -543,7 +521,7 @@ func TestInsertToNode(t *testing.T) {
 			// Add some children
 			for i := 0; i < 8; i++ {
 				leaf := node.NewLeaf(a, []byte{byte('a' + i)}, i*100)
-				node16.AddChild(byte('a'+i), leaf)
+				node16.AddChild(opt.Some(byte('a'+i)), leaf)
 			}
 
 			Convey("And inserting a new leaf", func() {
@@ -578,7 +556,7 @@ func TestInsertToNode(t *testing.T) {
 			// Add some children
 			for i := 0; i < 20; i++ {
 				leaf := node.NewLeaf(a, []byte{byte(i * 10)}, i*100)
-				node48.AddChild(byte(i*10), leaf)
+				node48.AddChild(opt.Some(byte(i*10)), leaf)
 			}
 
 			Convey("And inserting a new leaf", func() {
@@ -593,7 +571,7 @@ func TestInsertToNode(t *testing.T) {
 				Convey("And the leaf should be added to the node", func() {
 					So(node48.NumChildren, ShouldEqual, 21)
 					// Verify the new leaf can be found
-					found := node48.FindChild(42)
+					found := node48.FindChild(opt.Some(byte(42)))
 					So(found, ShouldNotBeNil)
 					So(*found, ShouldEqual, newLeaf.Ref())
 				})
@@ -608,7 +586,7 @@ func TestInsertToNode(t *testing.T) {
 			// Add some children
 			for i := 0; i < 50; i++ {
 				leaf := node.NewLeaf(a, []byte{byte(i * 5)}, i*100)
-				node256.AddChild(byte(i*5), leaf)
+				node256.AddChild(opt.Some(byte(i*5)), leaf)
 			}
 
 			Convey("And inserting a new leaf", func() {
@@ -625,7 +603,7 @@ func TestInsertToNode(t *testing.T) {
 					// If key 99 already exists, NumChildren won't change
 					So(node256.NumChildren, ShouldBeGreaterThanOrEqualTo, 50)
 					// Verify the new leaf can be found
-					found := node256.FindChild(99)
+					found := node256.FindChild(opt.Some(byte(99)))
 					So(found, ShouldNotBeNil)
 					So(*found, ShouldEqual, newLeaf.Ref())
 				})
@@ -639,7 +617,7 @@ func TestInsertToNode(t *testing.T) {
 
 			// Add a child at depth 0
 			existingLeaf := node.NewLeaf(a, []byte("hello"), 123)
-			node4.AddChild('h', existingLeaf)
+			node4.AddChild(opt.Some(byte('h')), existingLeaf)
 
 			Convey("And inserting a leaf at depth 1", func() {
 				// Create leaf to insert at depth 1
@@ -667,7 +645,7 @@ func TestInsertToNode(t *testing.T) {
 
 			// Add a child
 			existingLeaf := node.NewLeaf(a, []byte("hello"), 123)
-			node4.AddChild('h', existingLeaf)
+			node4.AddChild(opt.Some(byte('h')), existingLeaf)
 
 			Convey("And inserting a leaf with same first byte", func() {
 				// Create leaf with same first byte
@@ -699,8 +677,12 @@ func TestInsertToNode(t *testing.T) {
 				result := InsertToNode(a, &ref, emptyKeyLeaf, 0, false)
 
 				So(result, ShouldBeNil)
-				So(node4.NumChildren, ShouldEqual, 1)
-				So(node4.Keys[0], ShouldEqual, byte(0)) // null terminator
+
+				So(node4.ZeroSizedChild.Empty(), ShouldBeFalse)
+				So(node4.ZeroSizedChild.AsLeaf(), ShouldEqual, emptyKeyLeaf)
+
+				So(node4.NumChildren, ShouldEqual, 0)
+				So(node4.Keys, ShouldEqual, [4]byte{0, 0, 0, 0})
 			})
 
 			Convey("And inserting with zero byte key", func() {
@@ -761,7 +743,7 @@ func TestInsertToNode(t *testing.T) {
 
 				// Add an existing child
 				existingLeaf := node.NewLeaf(a, append(longPrefix, 'a'), 123)
-				node4.AddChild('a', existingLeaf)
+				node4.AddChild(opt.Some(byte('a')), existingLeaf)
 
 				// Create new leaf with matching prefix
 				newLeaf := node.NewLeaf(a, append(longPrefix, 'b'), 456)
@@ -782,7 +764,7 @@ func TestInsertToNode(t *testing.T) {
 
 				// Add an existing child
 				existingLeaf := node.NewLeaf(a, []byte("hello"), 123)
-				node4.AddChild(0, existingLeaf) // null terminator
+				node4.AddChild(opt.Some(byte(0)), existingLeaf) // null terminator
 
 				// Create new leaf with same prefix
 				newLeaf := node.NewLeaf(a, []byte("hello world"), 456)
@@ -942,21 +924,31 @@ func TestRecursiveInsert_LazyExpansion(t *testing.T) {
 				// only where distinction is necessary
 				So(root.IsLeaf(), ShouldBeFalse)
 
-				n := root.AsNode4()
-				So(n.NumChildren, ShouldEqual, 2)
-				So(n.Partial.Raw(), ShouldResemble, []byte("a"))
-				So(n.Keys[0], ShouldEqual, 0)
-				So(n.Keys[1], ShouldEqual, byte('b'))
-				So(n.Children[0], ShouldEqual, leaf1.Ref())
-				So(n.Children[1], ShouldNotBeEmpty)
+				Convey("Then the root should be a Node4", func() {
+					So(root.IsNode4(), ShouldBeTrue)
 
-				n1 := n.Children[1].AsNode4()
-				So(n1.NumChildren, ShouldEqual, 2)
-				So(n1.Partial.Raw(), ShouldResemble, []byte(nil))
-				So(n1.Keys[0], ShouldEqual, 0)
-				So(n1.Keys[1], ShouldEqual, byte('c'))
-				So(n1.Children[0], ShouldEqual, leaf2.Ref())
-				So(n1.Children[1], ShouldEqual, leaf3.Ref())
+					n := root.AsNode4()
+					So(n.NumChildren, ShouldEqual, 1)
+					So(n.Partial.Raw(), ShouldResemble, []byte("a"))
+					So(n.ZeroSizedChild.Empty(), ShouldBeFalse)
+					So(n.ZeroSizedChild.AsLeaf(), ShouldEqual, leaf1)
+					So(n.Keys, ShouldEqual, [4]byte{'b', 0, 0, 0})
+					So(n.Children[0].Empty(), ShouldBeFalse)
+
+					Convey("Then the first child should be a Node4", func() {
+						n1 := n.Children[0].AsNode4()
+						So(n1.NumChildren, ShouldEqual, 1)
+						So(n1.Partial.Raw(), ShouldResemble, []byte(nil))
+
+						So(n1.ZeroSizedChild.Empty(), ShouldBeFalse)
+						So(n1.ZeroSizedChild.AsLeaf(), ShouldEqual, leaf2)
+
+						So(n1.Keys, ShouldEqual, [4]byte{'c', 0, 0, 0})
+						So(n1.Children[0].Empty(), ShouldBeFalse)
+						So(n1.Children[0].AsLeaf(), ShouldEqual, leaf3)
+					})
+				})
+
 			})
 		})
 
