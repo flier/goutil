@@ -14,8 +14,8 @@ import (
 	"github.com/flier/goutil/pkg/xiter"
 )
 
-// TestTree_Iter tests the Iter method
-func TestTree_Iter(t *testing.T) {
+// TestTree_All tests the All method
+func TestTree_All(t *testing.T) {
 	Convey("Given an ART tree with values", t, func() {
 		tree := &art.Tree[int]{}
 		a := new(arena.Arena)
@@ -26,7 +26,7 @@ func TestTree_Iter(t *testing.T) {
 		tree.Insert(a, []byte("cherry"), 3)
 
 		Convey("When iterating over all values", func() {
-			visited := maps.Collect(xiter.MapKeyValue(tree.Iter(),
+			visited := maps.Collect(xiter.MapKeyValue(tree.All(),
 				func(key []byte, value *int) (string, int) {
 					return string(key), *value
 				}),
@@ -44,7 +44,7 @@ func TestTree_Iter(t *testing.T) {
 		Convey("When iterating with early termination", func() {
 			visited := make(map[string]int)
 
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 
 				if string(key) == "banana" {
@@ -62,7 +62,7 @@ func TestTree_Iter(t *testing.T) {
 
 		Convey("When iterating over empty tree", func() {
 			emptyTree := &art.Tree[int]{}
-			visited := maps.Collect(xiter.MapKey(emptyTree.Iter(), func(key []byte, value *int) string {
+			visited := maps.Collect(xiter.MapKey(emptyTree.All(), func(key []byte, value *int) string {
 				return string(key)
 			}))
 
@@ -74,7 +74,7 @@ func TestTree_Iter(t *testing.T) {
 		Convey("When iterating with callback that modifies visited map", func() {
 			visited := make(map[string]int)
 
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 				// Modify the map during iteration
 				visited["modified"] = 999
@@ -92,8 +92,8 @@ func TestTree_Iter(t *testing.T) {
 	})
 }
 
-// TestTree_IterPrefix tests the IterPrefix method
-func TestTree_IterPrefix(t *testing.T) {
+// TestTree_AllPrefix tests the IterPrefix method
+func TestTree_AllPrefix(t *testing.T) {
 	Convey("Given an ART tree with prefixed values", t, func() {
 		tree := &art.Tree[int]{}
 		a := new(arena.Arena)
@@ -106,7 +106,7 @@ func TestTree_IterPrefix(t *testing.T) {
 		tree.Insert(a, []byte("date"), 5)
 
 		Convey("When iterating with prefix 'app'", func() {
-			seq := tree.IterPrefix([]byte("app"))
+			seq := tree.AllPrefix([]byte("app"))
 
 			visited := maps.Collect(xiter.MapKeyValue(seq, func(key []byte, value *int) (string, int) {
 				return string(key), *value
@@ -121,7 +121,7 @@ func TestTree_IterPrefix(t *testing.T) {
 		})
 
 		Convey("When iterating with prefix 'b'", func() {
-			seq := tree.IterPrefix([]byte("b"))
+			seq := tree.AllPrefix([]byte("b"))
 
 			visited := maps.Collect(xiter.MapKeyValue(seq, func(key []byte, value *int) (string, int) {
 				return string(key), *value
@@ -135,7 +135,7 @@ func TestTree_IterPrefix(t *testing.T) {
 		})
 
 		Convey("When iterating with prefix 'nonexistent'", func() {
-			seq := tree.IterPrefix([]byte("nonexistent"))
+			seq := tree.AllPrefix([]byte("nonexistent"))
 
 			visited := maps.Collect(xiter.MapKey(seq, func(key []byte, value *int) string {
 				return string(key)
@@ -147,7 +147,7 @@ func TestTree_IterPrefix(t *testing.T) {
 		})
 
 		Convey("When iterating with empty prefix", func() {
-			seq := tree.IterPrefix([]byte{})
+			seq := tree.AllPrefix([]byte{})
 
 			visited := maps.Collect(xiter.MapKeyValue(seq, func(key []byte, value *int) (string, int) {
 				return string(key), *value
@@ -166,7 +166,7 @@ func TestTree_IterPrefix(t *testing.T) {
 
 		Convey("When iterating with early termination", func() {
 			visited := make(map[string]int)
-			seq := tree.IterPrefix([]byte("app"))
+			seq := tree.AllPrefix([]byte("app"))
 
 			for key, value := range seq {
 				visited[string(key)] = *value
@@ -183,8 +183,8 @@ func TestTree_IterPrefix(t *testing.T) {
 	})
 }
 
-// TestTree_Iter_EdgeCases tests edge cases for Iter
-func TestTree_Iter_EdgeCases(t *testing.T) {
+// TestTree_All_EdgeCases tests edge cases for Iter
+func TestTree_All_EdgeCases(t *testing.T) {
 	Convey("Given an ART tree", t, func() {
 		tree := &art.Tree[int]{}
 		a := new(arena.Arena)
@@ -193,7 +193,7 @@ func TestTree_Iter_EdgeCases(t *testing.T) {
 			tree.Insert(a, []byte{}, 123)
 			visited := make(map[string]int)
 
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 			}
 
@@ -205,7 +205,7 @@ func TestTree_Iter_EdgeCases(t *testing.T) {
 			tree.Insert(a, []byte{0}, 456)
 			visited := make(map[string]int)
 
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 			}
 
@@ -217,7 +217,7 @@ func TestTree_Iter_EdgeCases(t *testing.T) {
 			tree.Insert(a, []byte("hello\nworld"), 789)
 			visited := make(map[string]int)
 
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 			}
 
@@ -229,7 +229,7 @@ func TestTree_Iter_EdgeCases(t *testing.T) {
 			tree.Insert(a, []byte("hello世界"), 999)
 			visited := make(map[string]int)
 
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 			}
 
@@ -239,8 +239,8 @@ func TestTree_Iter_EdgeCases(t *testing.T) {
 	})
 }
 
-// TestTree_IterPrefix_EdgeCases tests edge cases for IterPrefix
-func TestTree_IterPrefix_EdgeCases(t *testing.T) {
+// TestTree_AllPrefix_EdgeCases tests edge cases for IterPrefix
+func TestTree_AllPrefix_EdgeCases(t *testing.T) {
 	Convey("Given an ART tree", t, func() {
 		tree := &art.Tree[int]{}
 		a := new(arena.Arena)
@@ -260,7 +260,7 @@ func TestTree_IterPrefix_EdgeCases(t *testing.T) {
 			}
 
 			visited := make(map[string]int)
-			for key, value := range tree.IterPrefix(longPrefix) {
+			for key, value := range tree.AllPrefix(longPrefix) {
 				visited[string(key)] = *value
 			}
 
@@ -273,7 +273,7 @@ func TestTree_IterPrefix_EdgeCases(t *testing.T) {
 			tree.Insert(a, []byte("hello\tworld"), 789)
 
 			visited := make(map[string]int)
-			for key, value := range tree.IterPrefix([]byte("hello\n")) {
+			for key, value := range tree.AllPrefix([]byte("hello\n")) {
 				visited[string(key)] = *value
 			}
 
@@ -287,7 +287,7 @@ func TestTree_IterPrefix_EdgeCases(t *testing.T) {
 
 			visited := make(map[string]int)
 
-			for key, value := range tree.IterPrefix([]byte("hello世界")) {
+			for key, value := range tree.AllPrefix([]byte("hello世界")) {
 				visited[string(key)] = *value
 			}
 
@@ -302,7 +302,7 @@ func TestTree_IterPrefix_EdgeCases(t *testing.T) {
 			tree.Insert(a, []byte("test2"), 222)
 
 			visited := make(map[string]int)
-			for key, value := range tree.IterPrefix([]byte{}) {
+			for key, value := range tree.AllPrefix([]byte{}) {
 				visited[string(key)] = *value
 			}
 
@@ -320,7 +320,7 @@ func TestTree_IterPrefix_EdgeCases(t *testing.T) {
 			tree.Insert(a, []byte("b"), 4)
 
 			visited := make(map[string]int)
-			for key, value := range tree.IterPrefix([]byte("a")) {
+			for key, value := range tree.AllPrefix([]byte("a")) {
 				visited[string(key)] = *value
 			}
 
@@ -333,8 +333,8 @@ func TestTree_IterPrefix_EdgeCases(t *testing.T) {
 	})
 }
 
-// TestTree_Iter_AdvancedScenarios tests advanced iteration scenarios
-func TestTree_Iter_AdvancedScenarios(t *testing.T) {
+// TestTree_All_AdvancedScenarios tests advanced iteration scenarios
+func TestTree_All_AdvancedScenarios(t *testing.T) {
 	Convey("Given advanced iteration scenarios", t, func() {
 		Convey("When iterating with nested prefixes", func() {
 			tree := &art.Tree[int]{}
@@ -352,7 +352,7 @@ func TestTree_Iter_AdvancedScenarios(t *testing.T) {
 			// Test different prefix levels
 			Convey("And iterating with 'user' prefix", func() {
 				visited := make(map[string]int)
-				for key, value := range tree.IterPrefix([]byte("user")) {
+				for key, value := range tree.AllPrefix([]byte("user")) {
 					visited[string(key)] = *value
 				}
 
@@ -368,7 +368,7 @@ func TestTree_Iter_AdvancedScenarios(t *testing.T) {
 
 			Convey("And iterating with 'user:1' prefix", func() {
 				visited := make(map[string]int)
-				for key, value := range tree.IterPrefix([]byte("user:1")) {
+				for key, value := range tree.AllPrefix([]byte("user:1")) {
 					visited[string(key)] = *value
 				}
 
@@ -393,7 +393,7 @@ func TestTree_Iter_AdvancedScenarios(t *testing.T) {
 			tree.Insert(a, []byte("with\ttab"), 5)     // With tab
 
 			visited := make(map[string]int)
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 			}
 
@@ -418,7 +418,7 @@ func TestTree_Iter_AdvancedScenarios(t *testing.T) {
 			tree.Insert(a, []byte("hElLo"), 4)
 
 			visited := make(map[string]int)
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 			}
 
@@ -432,8 +432,8 @@ func TestTree_Iter_AdvancedScenarios(t *testing.T) {
 	})
 }
 
-// TestTree_Iter_DifferentTypes tests different value types
-func TestTree_Iter_DifferentTypes(t *testing.T) {
+// TestTree_All_DifferentTypes tests different value types
+func TestTree_All_DifferentTypes(t *testing.T) {
 	Convey("Given ART trees with different types", t, func() {
 		Convey("When using string values", func() {
 			tree := &art.Tree[string]{}
@@ -444,7 +444,7 @@ func TestTree_Iter_DifferentTypes(t *testing.T) {
 
 			visited := make(map[string]string)
 
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 			}
 
@@ -468,7 +468,7 @@ func TestTree_Iter_DifferentTypes(t *testing.T) {
 
 			visited := make(map[string]TestStruct)
 
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 			}
 
@@ -486,7 +486,7 @@ func TestTree_Iter_DifferentTypes(t *testing.T) {
 			tree.Insert(a, []byte("e"), 2.71828)
 
 			visited := make(map[string]float64)
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 			}
 
@@ -499,7 +499,7 @@ func TestTree_Iter_DifferentTypes(t *testing.T) {
 }
 
 // Benchmark tests for performance measurement
-func BenchmarkTree_Iter(b *testing.B) {
+func BenchmarkTree_All(b *testing.B) {
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -512,13 +512,13 @@ func BenchmarkTree_Iter(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N/100; i++ {
-		for key, value := range tree.Iter() {
+		for key, value := range tree.All() {
 			_, _ = key, value
 		}
 	}
 }
 
-func BenchmarkTree_IterPrefix(b *testing.B) {
+func BenchmarkTree_AllPrefix(b *testing.B) {
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -531,13 +531,13 @@ func BenchmarkTree_IterPrefix(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N/100; i++ {
-		for key, value := range tree.IterPrefix([]byte("prefix")) {
+		for key, value := range tree.AllPrefix([]byte("prefix")) {
 			_, _ = key, value
 		}
 	}
 }
 
-func BenchmarkTree_IterPrefix_NoMatch(b *testing.B) {
+func BenchmarkTree_AllPrefix_NoMatch(b *testing.B) {
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -550,13 +550,13 @@ func BenchmarkTree_IterPrefix_NoMatch(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N/100; i++ {
-		for key, value := range tree.IterPrefix([]byte("nonexistent")) {
+		for key, value := range tree.AllPrefix([]byte("nonexistent")) {
 			_, _ = key, value
 		}
 	}
 }
 
-func BenchmarkTree_Iter_LargeTree(b *testing.B) {
+func BenchmarkTree_All_LargeTree(b *testing.B) {
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -569,13 +569,13 @@ func BenchmarkTree_Iter_LargeTree(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N/10000; i++ {
-		for key, value := range tree.Iter() {
+		for key, value := range tree.All() {
 			_, _ = key, value
 		}
 	}
 }
 
-func BenchmarkTree_IterPrefix_LargeTree(b *testing.B) {
+func BenchmarkTree_AllPrefix_LargeTree(b *testing.B) {
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -588,13 +588,13 @@ func BenchmarkTree_IterPrefix_LargeTree(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N/10000; i++ {
-		for key, value := range tree.IterPrefix([]byte("prefix")) {
+		for key, value := range tree.AllPrefix([]byte("prefix")) {
 			_, _ = key, value
 		}
 	}
 }
 
-func BenchmarkTree_Iter_StringValues(b *testing.B) {
+func BenchmarkTree_All_StringValues(b *testing.B) {
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -608,20 +608,20 @@ func BenchmarkTree_Iter_StringValues(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N/1000; i++ {
-		for key, value := range tree.Iter() {
+		for key, value := range tree.All() {
 			_, _ = key, value
 		}
 	}
 }
 
-// TestTree_Iter_ErrorHandling tests error handling and edge cases
-func TestTree_Iter_ErrorHandling(t *testing.T) {
+// TestTree_All_ErrorHandling tests error handling and edge cases
+func TestTree_All_ErrorHandling(t *testing.T) {
 	Convey("Given error handling scenarios", t, func() {
 		Convey("When iterating over empty tree", func() {
 			tree := &art.Tree[int]{}
 
 			visited := make(map[string]int)
-			for key, value := range tree.Iter() {
+			for key, value := range tree.All() {
 				visited[string(key)] = *value
 			}
 
@@ -637,7 +637,7 @@ func TestTree_Iter_ErrorHandling(t *testing.T) {
 			tree.Insert(a, []byte("world"), 2)
 
 			visited := make(map[string]int)
-			for key, value := range tree.IterPrefix([]byte("nonexistent")) {
+			for key, value := range tree.AllPrefix([]byte("nonexistent")) {
 				visited[string(key)] = *value
 			}
 
@@ -658,7 +658,7 @@ func TestTree_Iter_ErrorHandling(t *testing.T) {
 			}
 
 			visited := make(map[string]int)
-			for key, value := range tree.IterPrefix(longPrefix) {
+			for key, value := range tree.AllPrefix(longPrefix) {
 				visited[string(key)] = *value
 			}
 
@@ -676,7 +676,7 @@ func TestTree_Iter_ErrorHandling(t *testing.T) {
 			tree.Insert(a, []byte("help"), 4)
 
 			visited := make(map[string]int)
-			for key, value := range tree.IterPrefix([]byte("hel")) {
+			for key, value := range tree.AllPrefix([]byte("hel")) {
 				visited[string(key)] = *value
 			}
 
