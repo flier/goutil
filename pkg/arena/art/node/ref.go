@@ -261,17 +261,22 @@ func (r Ref[T]) AsNode() Node[T] {
 		return nil
 	}
 
+	p := r.ptr()
+	if p == nil {
+		return nil
+	}
+
 	switch r.Type() {
 	case TypeLeaf:
-		return (*Leaf[T])(r.ptr())
+		return (*Leaf[T])(p)
 	case TypeNode4:
-		return (*Node4[T])(r.ptr())
+		return (*Node4[T])(p)
 	case TypeNode16:
-		return (*Node16[T])(r.ptr())
+		return (*Node16[T])(p)
 	case TypeNode48:
-		return (*Node48[T])(r.ptr())
+		return (*Node48[T])(p)
 	case TypeNode256:
-		return (*Node256[T])(r.ptr())
+		return (*Node256[T])(p)
 	default:
 		panic("invalid node type")
 	}
