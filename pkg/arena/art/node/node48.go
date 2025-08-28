@@ -4,7 +4,6 @@ import (
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/art/simd"
-	"github.com/flier/goutil/pkg/opt"
 )
 
 // Node48 represents a node in an adaptive radix tree that can store up to 48 children.
@@ -165,8 +164,8 @@ func (n *Node48[T]) Maximum() *Leaf[T] {
 //   - Check Keys[b] for valid child index (non-zero)
 //   - If valid, access Children[Keys[b]-1] (1-based indexing)
 //   - Return child reference or nil if not found
-func (n *Node48[T]) FindChild(b opt.Option[byte]) *Ref[T] {
-	if b.IsNone() {
+func (n *Node48[T]) FindChild(b int) *Ref[T] {
+	if b < 0 {
 		if n.ZeroSizedChild.Empty() {
 			return nil
 		}
@@ -174,7 +173,7 @@ func (n *Node48[T]) FindChild(b opt.Option[byte]) *Ref[T] {
 		return &n.ZeroSizedChild
 	}
 
-	k := b.Unwrap()
+	k := byte(b)
 
 	if idx := n.Keys[k]; idx != 0 {
 		return &n.Children[idx-1]
@@ -208,14 +207,14 @@ func (n *Node48[T]) FindChild(b opt.Option[byte]) *Ref[T] {
 //   - Time complexity: O(1) for replacement, O(48) for new child
 //   - Space complexity: O(1)
 //   - Memory operations: Direct assignment to sparse arrays
-func (n *Node48[T]) AddChild(b opt.Option[byte], child AsRef[T]) {
-	if b.IsNone() {
+func (n *Node48[T]) AddChild(b int, child AsRef[T]) {
+	if b < 0 {
 		n.ZeroSizedChild = child.Ref()
 
 		return
 	}
 
-	k := b.Unwrap()
+	k := byte(b)
 
 	// Check if key already exists
 	if idx := n.Keys[k]; idx != 0 {
@@ -304,8 +303,8 @@ func (n *Node48[T]) Grow(a arena.Allocator) Node[T] {
 //   - Time complexity: O(1) - direct array access
 //   - Space complexity: O(1)
 //   - Memory operations: Two array assignments
-func (n *Node48[T]) RemoveChild(b opt.Option[byte], child *Ref[T]) {
-	if b.IsNone() {
+func (n *Node48[T]) RemoveChild(b int, child *Ref[T]) {
+	if b < 0 {
 		if &n.ZeroSizedChild == child {
 			n.ZeroSizedChild = 0
 		}
@@ -313,7 +312,7 @@ func (n *Node48[T]) RemoveChild(b opt.Option[byte], child *Ref[T]) {
 		return
 	}
 
-	k := b.Unwrap()
+	k := byte(b)
 
 	// Find the position of the child in the Children array
 	idx := n.Keys[k]

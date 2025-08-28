@@ -500,6 +500,8 @@ func TestTree_All_DifferentTypes(t *testing.T) {
 
 // Benchmark tests for performance measurement
 func BenchmarkTree_All(b *testing.B) {
+	b.ReportAllocs()
+
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -519,6 +521,8 @@ func BenchmarkTree_All(b *testing.B) {
 }
 
 func BenchmarkTree_AllPrefix(b *testing.B) {
+	b.ReportAllocs()
+
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -538,6 +542,8 @@ func BenchmarkTree_AllPrefix(b *testing.B) {
 }
 
 func BenchmarkTree_AllPrefix_NoMatch(b *testing.B) {
+	b.ReportAllocs()
+
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -557,6 +563,8 @@ func BenchmarkTree_AllPrefix_NoMatch(b *testing.B) {
 }
 
 func BenchmarkTree_All_LargeTree(b *testing.B) {
+	b.ReportAllocs()
+
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -576,6 +584,8 @@ func BenchmarkTree_All_LargeTree(b *testing.B) {
 }
 
 func BenchmarkTree_AllPrefix_LargeTree(b *testing.B) {
+	b.ReportAllocs()
+
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 
@@ -595,6 +605,8 @@ func BenchmarkTree_AllPrefix_LargeTree(b *testing.B) {
 }
 
 func BenchmarkTree_All_StringValues(b *testing.B) {
+	b.ReportAllocs()
+
 	a := new(arena.Arena)
 	tree := &art.Tree[int]{}
 

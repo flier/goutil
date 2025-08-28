@@ -9,7 +9,6 @@ import (
 	"github.com/flier/goutil/pkg/arena/art/node"
 	. "github.com/flier/goutil/pkg/arena/art/tree"
 	"github.com/flier/goutil/pkg/arena/slice"
-	"github.com/flier/goutil/pkg/opt"
 )
 
 // TestSearch tests the Search function
@@ -73,8 +72,8 @@ func TestSearch(t *testing.T) {
 			leaf2 := node.NewLeaf(a, foobar, 456)
 
 			// Add children to Node4
-			node4.AddChild(opt.Some(byte('h')), leaf1)
-			node4.AddChild(opt.Some(byte('f')), leaf2)
+			node4.AddChild(int('h'), leaf1)
+			node4.AddChild(int('f'), leaf2)
 			root := node4.Ref()
 
 			Convey("And searching for first child key", func() {
@@ -113,8 +112,8 @@ func TestSearch(t *testing.T) {
 			leaf2 := node.NewLeaf(a, help, 456)
 
 			// Add children to Node4
-			node4.AddChild(opt.Some(byte('l')), leaf1)
-			node4.AddChild(opt.Some(byte('p')), leaf2)
+			node4.AddChild(int('l'), leaf1)
+			node4.AddChild(int('p'), leaf2)
 			root := node4.Ref()
 
 			Convey("And searching for first child key", func() {
@@ -168,7 +167,7 @@ func TestSearch(t *testing.T) {
 
 			for i := 0; i < 8; i++ {
 				leaves[i] = node.NewLeaf(a, []byte{byte('a' + i)}, values[i])
-				node16.AddChild(opt.Some(byte('a'+i)), leaves[i])
+				node16.AddChild(int('a'+i), leaves[i])
 			}
 
 			root := node16.Ref()
@@ -197,9 +196,9 @@ func TestSearch(t *testing.T) {
 			leaf2 := node.NewLeaf(a, []byte{128}, 200)
 			leaf3 := node.NewLeaf(a, []byte{255}, 300)
 
-			node48.AddChild(opt.Some(byte(0)), leaf1)
-			node48.AddChild(opt.Some(byte(128)), leaf2)
-			node48.AddChild(opt.Some(byte(255)), leaf3)
+			node48.AddChild(int(0), leaf1)
+			node48.AddChild(int(128), leaf2)
+			node48.AddChild(int(255), leaf3)
 			root := node48.Ref()
 
 			Convey("And searching for existing keys", func() {
@@ -231,8 +230,8 @@ func TestSearch(t *testing.T) {
 			leaf1 := node.NewLeaf(a, []byte{42}, 420)
 			leaf2 := node.NewLeaf(a, []byte{200}, 2000)
 
-			node256.AddChild(opt.Some(byte(42)), leaf1)
-			node256.AddChild(opt.Some(byte(200)), leaf2)
+			node256.AddChild(int(42), leaf1)
+			node256.AddChild(int(200), leaf2)
 			root := node256.Ref()
 
 			Convey("And searching for existing keys", func() {
@@ -363,7 +362,7 @@ func TestSearch(t *testing.T) {
 
 				leaf := node.NewLeaf(a, hello, 555)
 
-				node4.AddChild(opt.Some(byte(0)), leaf)
+				node4.AddChild(int(0), leaf)
 				root := node4.Ref()
 
 				// Search with key "hel" which is shorter than prefix "hello"
@@ -380,7 +379,7 @@ func TestSearch(t *testing.T) {
 
 				leaf := node.NewLeaf(a, hello, 444)
 
-				node4.AddChild(opt.Some(byte(0)), leaf)
+				node4.AddChild(int(0), leaf)
 				root := node4.Ref()
 
 				// Search with key "world" which has different prefix
@@ -397,7 +396,7 @@ func TestSearch(t *testing.T) {
 
 				leaf := node.NewLeaf(a, hello, 333)
 
-				node4.AddChild(opt.Some(byte(0)), leaf)
+				node4.AddChild(int(0), leaf)
 				root := node4.Ref()
 
 				// Search with key "hellx" which matches prefix up to "hell" but differs at position 4

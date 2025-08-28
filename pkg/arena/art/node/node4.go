@@ -3,7 +3,6 @@ package node
 import (
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
-	"github.com/flier/goutil/pkg/opt"
 	"github.com/flier/goutil/pkg/xunsafe"
 )
 
@@ -132,8 +131,8 @@ func (n *Node4[T]) Maximum() *Leaf[T] {
 //   - Linear search through sorted keys array
 //   - Early termination on match
 //   - Returns corresponding child reference
-func (n *Node4[T]) FindChild(b opt.Option[byte]) *Ref[T] {
-	if b.IsNone() {
+func (n *Node4[T]) FindChild(b int) *Ref[T] {
+	if b < 0 {
 		if n.ZeroSizedChild.Empty() {
 			return nil
 		}
@@ -141,7 +140,7 @@ func (n *Node4[T]) FindChild(b opt.Option[byte]) *Ref[T] {
 		return &n.ZeroSizedChild
 	}
 
-	k := b.Unwrap()
+	k := byte(b)
 
 	for i := 0; i < n.NumChildren; i++ {
 		if n.Keys[i] == k {
@@ -176,8 +175,8 @@ func (n *Node4[T]) FindChild(b opt.Option[byte]) *Ref[T] {
 //   - Time complexity: O(n) where n is the number of children
 //   - Space complexity: O(1) (fixed array size)
 //   - Memory operations: Array shifting for sorted order
-func (n *Node4[T]) AddChild(b opt.Option[byte], child AsRef[T]) {
-	if b.IsNone() {
+func (n *Node4[T]) AddChild(b int, child AsRef[T]) {
+	if b < 0 {
 		n.ZeroSizedChild = child.Ref()
 
 		return
@@ -185,7 +184,7 @@ func (n *Node4[T]) AddChild(b opt.Option[byte], child AsRef[T]) {
 
 	debug.Assert(!n.Full(), "node must not be full")
 
-	k := b.Unwrap()
+	k := byte(b)
 
 	var i int
 
@@ -261,8 +260,8 @@ func (n *Node4[T]) Grow(a arena.Allocator) Node[T] {
 //   - Time complexity: O(n) where n is the number of children
 //   - Space complexity: O(1)
 //   - Memory operations: Array shifting to maintain order
-func (n *Node4[T]) RemoveChild(b opt.Option[byte], child *Ref[T]) {
-	if b.IsNone() {
+func (n *Node4[T]) RemoveChild(b int, child *Ref[T]) {
+	if b < 0 {
 		if &n.ZeroSizedChild == child {
 			n.ZeroSizedChild = 0
 		}

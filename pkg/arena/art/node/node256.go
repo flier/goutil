@@ -2,7 +2,6 @@ package node
 
 import (
 	"github.com/flier/goutil/pkg/arena"
-	"github.com/flier/goutil/pkg/opt"
 )
 
 // Node256 represents the largest node type in an adaptive radix tree, capable of
@@ -164,8 +163,8 @@ func (n *Node256[T]) Maximum() *Leaf[T] {
 //   - Direct array access: Children[b]
 //   - Check if reference is non-zero
 //   - Return pointer to reference or nil
-func (n *Node256[T]) FindChild(b opt.Option[byte]) *Ref[T] {
-	if b.IsNone() {
+func (n *Node256[T]) FindChild(b int) *Ref[T] {
+	if b < 0 {
 		if n.ZeroSizedChild.Empty() {
 			return nil
 		}
@@ -173,7 +172,7 @@ func (n *Node256[T]) FindChild(b opt.Option[byte]) *Ref[T] {
 		return &n.ZeroSizedChild
 	}
 
-	k := b.Unwrap()
+	k := byte(b)
 
 	if !n.Children[k].Empty() {
 		return &n.Children[k]
@@ -209,14 +208,14 @@ func (n *Node256[T]) FindChild(b opt.Option[byte]) *Ref[T] {
 //   - Space complexity: O(1)
 //   - Memory operations: Single array assignment
 //   - No shifting or reordering overhead
-func (n *Node256[T]) AddChild(b opt.Option[byte], child AsRef[T]) {
-	if b.IsNone() {
+func (n *Node256[T]) AddChild(b int, child AsRef[T]) {
+	if b < 0 {
 		n.ZeroSizedChild = child.Ref()
 
 		return
 	}
 
-	k := b.Unwrap()
+	k := byte(b)
 
 	if n.Children[k] == 0 {
 		n.NumChildren++
@@ -267,8 +266,8 @@ func (n *Node256[T]) Grow(arena.Allocator) Node[T] {
 //   - Time complexity: O(1) - direct array assignment
 //   - Space complexity: O(1)
 //   - Memory operations: Single array assignment
-func (n *Node256[T]) RemoveChild(b opt.Option[byte], child *Ref[T]) {
-	if b.IsNone() {
+func (n *Node256[T]) RemoveChild(b int, child *Ref[T]) {
+	if b < 0 {
 		if &n.ZeroSizedChild == child {
 			n.ZeroSizedChild = 0
 		}
@@ -276,7 +275,7 @@ func (n *Node256[T]) RemoveChild(b opt.Option[byte], child *Ref[T]) {
 		return
 	}
 
-	k := b.Unwrap()
+	k := byte(b)
 
 	n.Children[k] = 0
 	n.NumChildren--

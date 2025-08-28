@@ -2,7 +2,6 @@ package tree
 
 import (
 	"github.com/flier/goutil/pkg/arena/art/node"
-	"github.com/flier/goutil/pkg/opt"
 )
 
 // RecursiveIter iterates over the tree using a callback function.
@@ -121,7 +120,7 @@ func IterPrefix[T any](ref node.Ref[T], prefix []byte, cb func(key []byte, value
 			depth += p.Len()
 		}
 
-		child := n.FindChild(opt.Some(prefix[depth]))
+		child := n.FindChild(int(prefix[depth]))
 
 		if child == nil {
 			break

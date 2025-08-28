@@ -2,6 +2,7 @@ package art_test
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -817,37 +818,49 @@ func TestTree_LenOperations(t *testing.T) {
 
 // Benchmark tests for performance measurement
 func BenchmarkTree_Insert(b *testing.B) {
+	b.ReportAllocs()
+
 	tree := &art.Tree[int]{}
 	a := new(arena.Arena)
+
+	keys := make([][]byte, 1000)
+
+	for i := 0; i < len(keys); i++ {
+		keys[i] = []byte(fmt.Sprintf("key%d", i))
+	}
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		key := []byte(fmt.Sprintf("key%d", i))
-		tree.Insert(a, key, i)
+		tree.Insert(a, keys[i%len(keys)], i)
 	}
 }
 
 func BenchmarkTree_Search(b *testing.B) {
+	b.ReportAllocs()
+
 	a := new(arena.Arena)
 	tree := arena.New(a, art.Tree[int]{})
 
+	keys := make([][]byte, 1000)
+
 	// Pre-populate tree
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < len(keys); i++ {
 		key := []byte(fmt.Sprintf("key%d", i))
 		tree.Insert(a, key, i)
+		keys[i] = key
 	}
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		key := []byte(fmt.Sprintf("key%d", i%1000))
-
-		_ = tree.Search(key)
+		_ = tree.Search(keys[i%len(keys)])
 	}
 }
 
 func BenchmarkTree_Visit(b *testing.B) {
+	b.ReportAllocs()
+
 	tree := &art.Tree[int]{}
 	a := new(arena.Arena)
 
@@ -859,33 +872,48 @@ func BenchmarkTree_Visit(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N/100; i++ {
+	var n int64
+
+	for i := 0; i < b.N; i++ {
 		tree.Visit(func(key []byte, value *int) bool {
 			_, _ = key, value
+
+			n++
 
 			return false
 		})
 	}
+
+	b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(n), "ns/node")
 }
 
 func BenchmarkTree_VisitPrefix(b *testing.B) {
+	b.ReportAllocs()
+
 	tree := &art.Tree[int]{}
 	a := new(arena.Arena)
 
 	// Pre-populate tree with prefixed keys
 	for i := 0; i < 100; i++ {
-		key := []byte(fmt.Sprintf("prefix%d", i))
+		key := append(kPrefix, []byte(strconv.Itoa(i))...)
 		tree.Insert(a, key, i)
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N/100; i++ {
+
+	var n int64
+
+	for i := 0; i < b.N; i++ {
 		tree.VisitPrefix(kPrefix, func(key []byte, value *int) bool {
 			_, _ = key, value
+
+			n++
 
 			return false
 		})
 	}
+
+	b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(n), "ns/node")
 }
 
 // TestTree_DebugAssertions tests the debug assertions in the Tree methods

@@ -4,7 +4,6 @@ import (
 	"github.com/flier/goutil/internal/debug"
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/art/node"
-	"github.com/flier/goutil/pkg/opt"
 )
 
 // RecursiveDelete finds and returns a leaf node that matches the given key.
@@ -40,10 +39,10 @@ func RecursiveDelete[T any](a arena.AllocatorExt, ref *node.Ref[T], key []byte, 
 		return nil
 	}
 
-	var b opt.Option[byte]
+	b := -1
 
 	if depth < len(key) {
-		b = opt.Some(key[depth])
+		b = int(key[depth])
 	}
 
 	// Find the child node
@@ -69,7 +68,7 @@ func RecursiveDelete[T any](a arena.AllocatorExt, ref *node.Ref[T], key []byte, 
 }
 
 // RemoveChild removes a child node from the current node.
-func RemoveChild[T any](a arena.AllocatorExt, ref *node.Ref[T], key opt.Option[byte], child *node.Ref[T]) {
+func RemoveChild[T any](a arena.AllocatorExt, ref *node.Ref[T], key int, child *node.Ref[T]) {
 	debug.Assert(ref.IsNode(), "ref must be a node")
 
 	curr := ref.AsNode()

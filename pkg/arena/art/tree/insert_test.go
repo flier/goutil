@@ -10,7 +10,6 @@ import (
 	"github.com/flier/goutil/pkg/arena/art/node"
 	. "github.com/flier/goutil/pkg/arena/art/tree"
 	"github.com/flier/goutil/pkg/arena/slice"
-	"github.com/flier/goutil/pkg/opt"
 )
 
 var (
@@ -409,7 +408,7 @@ func TestInsertToNode(t *testing.T) {
 
 			// Add an existing child
 			existingLeaf := node.NewLeaf(a, hello, 123)
-			node4.AddChild(opt.Some(byte('h')), existingLeaf)
+			node4.AddChild(int('h'), existingLeaf)
 
 			// Create new leaf to insert
 			newLeaf := node.NewLeaf(a, foobar, 456)
@@ -458,7 +457,7 @@ func TestInsertToNode(t *testing.T) {
 
 			// Add an existing child
 			existingLeaf := node.NewLeaf(a, hello, 123)
-			node4.AddChild(opt.Some(byte('l')), existingLeaf)
+			node4.AddChild(int('l'), existingLeaf)
 
 			Convey("And inserting a leaf with matching prefix", func() {
 				// Create leaf with matching prefix "hel"
@@ -488,7 +487,7 @@ func TestInsertToNode(t *testing.T) {
 			// Add 4 children to make it full
 			for i := 0; i < 4; i++ {
 				leaf := node.NewLeaf(a, []byte{byte('a' + i)}, i*100)
-				node4.AddChild(opt.Some(byte('a'+i)), leaf)
+				node4.AddChild(int('a'+i), leaf)
 			}
 
 			So(node4.Full(), ShouldBeTrue)
@@ -521,7 +520,7 @@ func TestInsertToNode(t *testing.T) {
 			// Add some children
 			for i := 0; i < 8; i++ {
 				leaf := node.NewLeaf(a, []byte{byte('a' + i)}, i*100)
-				node16.AddChild(opt.Some(byte('a'+i)), leaf)
+				node16.AddChild(int('a'+i), leaf)
 			}
 
 			Convey("And inserting a new leaf", func() {
@@ -556,7 +555,7 @@ func TestInsertToNode(t *testing.T) {
 			// Add some children
 			for i := 0; i < 20; i++ {
 				leaf := node.NewLeaf(a, []byte{byte(i * 10)}, i*100)
-				node48.AddChild(opt.Some(byte(i*10)), leaf)
+				node48.AddChild(int(i*10), leaf)
 			}
 
 			Convey("And inserting a new leaf", func() {
@@ -571,7 +570,7 @@ func TestInsertToNode(t *testing.T) {
 				Convey("And the leaf should be added to the node", func() {
 					So(node48.NumChildren, ShouldEqual, 21)
 					// Verify the new leaf can be found
-					found := node48.FindChild(opt.Some(byte(42)))
+					found := node48.FindChild(int(42))
 					So(found, ShouldNotBeNil)
 					So(*found, ShouldEqual, newLeaf.Ref())
 				})
@@ -586,7 +585,7 @@ func TestInsertToNode(t *testing.T) {
 			// Add some children
 			for i := 0; i < 50; i++ {
 				leaf := node.NewLeaf(a, []byte{byte(i * 5)}, i*100)
-				node256.AddChild(opt.Some(byte(i*5)), leaf)
+				node256.AddChild(int(i*5), leaf)
 			}
 
 			Convey("And inserting a new leaf", func() {
@@ -603,7 +602,7 @@ func TestInsertToNode(t *testing.T) {
 					// If key 99 already exists, NumChildren won't change
 					So(node256.NumChildren, ShouldBeGreaterThanOrEqualTo, 50)
 					// Verify the new leaf can be found
-					found := node256.FindChild(opt.Some(byte(99)))
+					found := node256.FindChild(int(99))
 					So(found, ShouldNotBeNil)
 					So(*found, ShouldEqual, newLeaf.Ref())
 				})
@@ -617,7 +616,7 @@ func TestInsertToNode(t *testing.T) {
 
 			// Add a child at depth 0
 			existingLeaf := node.NewLeaf(a, []byte("hello"), 123)
-			node4.AddChild(opt.Some(byte('h')), existingLeaf)
+			node4.AddChild(int('h'), existingLeaf)
 
 			Convey("And inserting a leaf at depth 1", func() {
 				// Create leaf to insert at depth 1
@@ -645,7 +644,7 @@ func TestInsertToNode(t *testing.T) {
 
 			// Add a child
 			existingLeaf := node.NewLeaf(a, []byte("hello"), 123)
-			node4.AddChild(opt.Some(byte('h')), existingLeaf)
+			node4.AddChild(int('h'), existingLeaf)
 
 			Convey("And inserting a leaf with same first byte", func() {
 				// Create leaf with same first byte
@@ -743,7 +742,7 @@ func TestInsertToNode(t *testing.T) {
 
 				// Add an existing child
 				existingLeaf := node.NewLeaf(a, append(longPrefix, 'a'), 123)
-				node4.AddChild(opt.Some(byte('a')), existingLeaf)
+				node4.AddChild(int('a'), existingLeaf)
 
 				// Create new leaf with matching prefix
 				newLeaf := node.NewLeaf(a, append(longPrefix, 'b'), 456)
@@ -764,7 +763,7 @@ func TestInsertToNode(t *testing.T) {
 
 				// Add an existing child
 				existingLeaf := node.NewLeaf(a, []byte("hello"), 123)
-				node4.AddChild(opt.Some(byte(0)), existingLeaf) // null terminator
+				node4.AddChild(int(0), existingLeaf) // null terminator
 
 				// Create new leaf with same prefix
 				newLeaf := node.NewLeaf(a, []byte("hello world"), 456)

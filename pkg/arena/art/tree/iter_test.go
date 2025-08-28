@@ -938,6 +938,8 @@ func TestIterPrefix_Performance(t *testing.T) {
 
 // Benchmark tests for performance measurement
 func BenchmarkRecursiveIter(b *testing.B) {
+	b.ReportAllocs()
+
 	a := new(arena.Arena)
 
 	// Create a complex tree for benchmarking
@@ -975,6 +977,8 @@ func BenchmarkRecursiveIter(b *testing.B) {
 }
 
 func BenchmarkIterPrefix(b *testing.B) {
+	b.ReportAllocs()
+
 	b.Run("prefix_match", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			// Fresh arena per iteration to prevent memory corruption

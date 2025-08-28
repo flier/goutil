@@ -8,7 +8,6 @@ import (
 	"github.com/flier/goutil/pkg/arena"
 	. "github.com/flier/goutil/pkg/arena/art/node"
 	"github.com/flier/goutil/pkg/arena/slice"
-	"github.com/flier/goutil/pkg/opt"
 )
 
 func TestNode16(t *testing.T) {
@@ -31,7 +30,7 @@ func TestNode16(t *testing.T) {
 			}
 
 			Convey("Adding first child", func() {
-				node.AddChild(opt.Some(byte('a')), children[0])
+				node.AddChild(int('a'), children[0])
 				So(node.NumChildren, ShouldEqual, 1)
 				So(node.Keys[0], ShouldEqual, byte('a'))
 				So(node.Children[0], ShouldEqual, children[0].Ref())
@@ -39,7 +38,7 @@ func TestNode16(t *testing.T) {
 
 			Convey("Adding children in order", func() {
 				for i := 0; i < 8; i++ {
-					node.AddChild(opt.Some(byte('a'+i)), children[i])
+					node.AddChild(int('a'+i), children[i])
 				}
 
 				So(node.NumChildren, ShouldEqual, 8)
@@ -50,9 +49,9 @@ func TestNode16(t *testing.T) {
 			})
 
 			Convey("Adding children out of order", func() {
-				node.AddChild(opt.Some(byte('c')), children[2])
-				node.AddChild(opt.Some(byte('a')), children[0])
-				node.AddChild(opt.Some(byte('b')), children[1])
+				node.AddChild(int('c'), children[2])
+				node.AddChild(int('a'), children[0])
+				node.AddChild(int('b'), children[1])
 
 				So(node.NumChildren, ShouldEqual, 3)
 				So(node.Keys[0], ShouldEqual, byte('a'))
@@ -63,7 +62,7 @@ func TestNode16(t *testing.T) {
 			Convey("Adding children to maintain sorted order", func() {
 				// Add in reverse order
 				for i := 15; i >= 0; i-- {
-					node.AddChild(opt.Some(byte('a'+i)), children[i])
+					node.AddChild(int('a'+i), children[i])
 				}
 
 				So(node.NumChildren, ShouldEqual, 16)
@@ -79,22 +78,22 @@ func TestNode16(t *testing.T) {
 			children := make([]*Leaf[any], 8)
 			for i := 0; i < 8; i++ {
 				children[i] = NewLeaf[any](a, []byte{byte('a' + i)}, nil)
-				node.AddChild(opt.Some(byte('a'+i)), children[i])
+				node.AddChild(int('a'+i), children[i])
 			}
 
 			Convey("Finding existing children", func() {
 				for i := 0; i < 8; i++ {
-					found := node.FindChild(opt.Some(byte('a' + i)))
+					found := node.FindChild(int('a' + i))
 					So(found, ShouldNotBeNil)
 					So(*found, ShouldEqual, children[i].Ref())
 				}
 			})
 
 			Convey("Finding non-existent children", func() {
-				found := node.FindChild(opt.Some(byte('x')))
+				found := node.FindChild(int('x'))
 				So(found, ShouldBeNil)
 
-				found = node.FindChild(opt.Some(byte('z')))
+				found = node.FindChild(int('z'))
 				So(found, ShouldBeNil)
 			})
 		})
@@ -107,7 +106,7 @@ func TestNode16(t *testing.T) {
 			Convey("Node with 8 children is not full", func() {
 				for i := 0; i < 8; i++ {
 					child := NewLeaf[any](a, []byte{byte('a' + i)}, nil)
-					node.AddChild(opt.Some(byte('a'+i)), child)
+					node.AddChild(int('a'+i), child)
 				}
 				So(node.Full(), ShouldBeFalse)
 			})
@@ -115,7 +114,7 @@ func TestNode16(t *testing.T) {
 			Convey("Node with 16 children is full", func() {
 				for i := 0; i < 16; i++ {
 					child := NewLeaf[any](a, []byte{byte('a' + i)}, nil)
-					node.AddChild(opt.Some(byte('a'+i)), child)
+					node.AddChild(int('a'+i), child)
 				}
 				So(node.Full(), ShouldBeTrue)
 			})
@@ -125,7 +124,7 @@ func TestNode16(t *testing.T) {
 			// Setup children
 			for i := 0; i < 16; i++ {
 				child := NewLeaf[any](a, []byte{byte('a' + i)}, nil)
-				node.AddChild(opt.Some(byte('a'+i)), child)
+				node.AddChild(int('a'+i), child)
 			}
 
 			Convey("Growing should create Node48", func() {
@@ -159,9 +158,9 @@ func TestNode16(t *testing.T) {
 				child2 := NewLeaf[any](a, []byte("b"), nil)
 				child3 := NewLeaf[any](a, []byte("c"), nil)
 
-				node.AddChild(opt.Some(byte('c')), child3)
-				node.AddChild(opt.Some(byte('a')), child1)
-				node.AddChild(opt.Some(byte('b')), child2)
+				node.AddChild(int('c'), child3)
+				node.AddChild(int('a'), child1)
+				node.AddChild(int('b'), child2)
 
 				So(node.Minimum(), ShouldEqual, child1)
 				So(node.Maximum(), ShouldEqual, child3)
@@ -179,13 +178,13 @@ func TestNode16_EdgeCases(t *testing.T) {
 			child1 := NewLeaf[any](a, []byte("a"), nil)
 			child2 := NewLeaf[any](a, []byte("a"), nil)
 
-			node.AddChild(opt.Some(byte('a')), child1)
-			node.AddChild(opt.Some(byte('a')), child2)
+			node.AddChild(int('a'), child1)
+			node.AddChild(int('a'), child2)
 
 			Convey("Should not replace the existing child", func() {
 				So(node.NumChildren, ShouldEqual, 2)
 
-				found := node.FindChild(opt.Some(byte('a')))
+				found := node.FindChild(int('a'))
 				So(found, ShouldNotBeNil)
 				So(*found, ShouldEqual, child1.Ref())
 			})
@@ -193,20 +192,20 @@ func TestNode16_EdgeCases(t *testing.T) {
 
 		Convey("When adding zero byte key", func() {
 			child := NewLeaf[any](a, []byte{0}, nil)
-			node.AddChild(opt.Some(byte(0)), child)
+			node.AddChild(int(0), child)
 
 			So(node.NumChildren, ShouldEqual, 1)
-			found := node.FindChild(opt.Some(byte(0)))
+			found := node.FindChild(int(0))
 			So(found, ShouldNotBeNil)
 			So(*found, ShouldEqual, child.Ref())
 		})
 
 		Convey("When adding 255 byte key", func() {
 			child := NewLeaf[any](a, []byte{255}, nil)
-			node.AddChild(opt.Some(byte(255)), child)
+			node.AddChild(int(255), child)
 
 			So(node.NumChildren, ShouldEqual, 1)
-			found := node.FindChild(opt.Some(byte(255)))
+			found := node.FindChild(int(255))
 			So(found, ShouldNotBeNil)
 			So(*found, ShouldEqual, child.Ref())
 		})
@@ -216,8 +215,8 @@ func TestNode16_EdgeCases(t *testing.T) {
 			childStart := NewLeaf[any](a, []byte{0}, nil)
 			childEnd := NewLeaf[any](a, []byte{255}, nil)
 
-			node.AddChild(opt.Some(byte(0)), childStart)
-			node.AddChild(opt.Some(byte(255)), childEnd)
+			node.AddChild(int(0), childStart)
+			node.AddChild(int(255), childEnd)
 
 			So(node.NumChildren, ShouldEqual, 2)
 			So(node.Keys[0], ShouldEqual, byte(0))
@@ -236,7 +235,7 @@ func TestNode16_Performance(t *testing.T) {
 			children := make([]*Leaf[any], 16)
 			for i := 0; i < 16; i++ {
 				children[i] = NewLeaf[any](a, []byte{byte(i)}, nil)
-				node.AddChild(opt.Some(byte(i)), children[i])
+				node.AddChild(int(i), children[i])
 			}
 
 			So(node.NumChildren, ShouldEqual, 16)
@@ -244,7 +243,7 @@ func TestNode16_Performance(t *testing.T) {
 
 			// Verify all children can be found
 			for i := 0; i < 16; i++ {
-				found := node.FindChild(opt.Some(byte(i)))
+				found := node.FindChild(int(i))
 				So(found, ShouldNotBeNil)
 				So(*found, ShouldEqual, children[i].Ref())
 			}
@@ -254,14 +253,14 @@ func TestNode16_Performance(t *testing.T) {
 			// Add children in sorted order to test search performance
 			for i := 0; i < 8; i++ {
 				child := NewLeaf[any](a, []byte{byte(i * 2)}, nil)
-				node.AddChild(opt.Some(byte(i*2)), child)
+				node.AddChild(int(i*2), child)
 			}
 
 			// Test finding existing and non-existing keys
-			So(node.FindChild(opt.Some(byte(0))), ShouldNotBeNil)
-			So(node.FindChild(opt.Some(byte(14))), ShouldNotBeNil)
-			So(node.FindChild(opt.Some(byte(1))), ShouldBeNil)  // Odd numbers don't exist
-			So(node.FindChild(opt.Some(byte(15))), ShouldBeNil) // Odd numbers don't exist
+			So(node.FindChild(int(0)), ShouldNotBeNil)
+			So(node.FindChild(int(14)), ShouldNotBeNil)
+			So(node.FindChild(int(1)), ShouldBeNil)  // Odd numbers don't exist
+			So(node.FindChild(int(15)), ShouldBeNil) // Odd numbers don't exist
 		})
 	})
 }
@@ -275,23 +274,23 @@ func TestNode16_RemoveChild(t *testing.T) {
 		children := make([]*Leaf[any], 8)
 		for i := 0; i < 8; i++ {
 			children[i] = NewLeaf[any](a, []byte{byte('a' + i)}, nil)
-			node.AddChild(opt.Some(byte('a'+i)), children[i])
+			node.AddChild(int('a'+i), children[i])
 		}
 
 		So(node.NumChildren, ShouldEqual, 8)
 
 		Convey("When removing the first child", func() {
-			childRef := node.FindChild(opt.Some(byte('a')))
+			childRef := node.FindChild(int('a'))
 			So(childRef, ShouldNotBeNil)
 
-			node.RemoveChild(opt.Some(byte('a')), childRef)
+			node.RemoveChild(int('a'), childRef)
 
 			Convey("Then NumChildren should be decremented", func() {
 				So(node.NumChildren, ShouldEqual, 7)
 			})
 
 			Convey("And the child should not be found", func() {
-				found := node.FindChild(opt.Some(byte('a')))
+				found := node.FindChild(int('a'))
 				So(found, ShouldBeNil)
 			})
 
@@ -304,17 +303,17 @@ func TestNode16_RemoveChild(t *testing.T) {
 		})
 
 		Convey("When removing the middle child", func() {
-			childRef := node.FindChild(opt.Some(byte('d')))
+			childRef := node.FindChild(int('d'))
 			So(childRef, ShouldNotBeNil)
 
-			node.RemoveChild(opt.Some(byte('d')), childRef)
+			node.RemoveChild(int('d'), childRef)
 
 			Convey("Then NumChildren should be decremented", func() {
 				So(node.NumChildren, ShouldEqual, 7)
 			})
 
 			Convey("And the child should not be found", func() {
-				found := node.FindChild(opt.Some(byte('d')))
+				found := node.FindChild(int('d'))
 				So(found, ShouldBeNil)
 			})
 
@@ -328,17 +327,17 @@ func TestNode16_RemoveChild(t *testing.T) {
 		})
 
 		Convey("When removing the last child", func() {
-			childRef := node.FindChild(opt.Some(byte('h')))
+			childRef := node.FindChild(int('h'))
 			So(childRef, ShouldNotBeNil)
 
-			node.RemoveChild(opt.Some(byte('h')), childRef)
+			node.RemoveChild(int('h'), childRef)
 
 			Convey("Then NumChildren should be decremented", func() {
 				So(node.NumChildren, ShouldEqual, 7)
 			})
 
 			Convey("And the child should not be found", func() {
-				found := node.FindChild(opt.Some(byte('h')))
+				found := node.FindChild(int('h'))
 				So(found, ShouldBeNil)
 			})
 
@@ -349,26 +348,26 @@ func TestNode16_RemoveChild(t *testing.T) {
 
 		Convey("When removing multiple children", func() {
 			// Remove 'b' first
-			childRef := node.FindChild(opt.Some(byte('b')))
-			node.RemoveChild(opt.Some(byte('b')), childRef)
+			childRef := node.FindChild(int('b'))
+			node.RemoveChild(int('b'), childRef)
 
 			// Remove 'e' second
-			childRef = node.FindChild(opt.Some(byte('e')))
-			node.RemoveChild(opt.Some(byte('e')), childRef)
+			childRef = node.FindChild(int('e'))
+			node.RemoveChild(int('e'), childRef)
 
 			Convey("Then NumChildren should be 6", func() {
 				So(node.NumChildren, ShouldEqual, 6)
 			})
 
 			Convey("And only remaining children should be found", func() {
-				So(node.FindChild(opt.Some(byte('a'))), ShouldNotBeNil)
-				So(node.FindChild(opt.Some(byte('b'))), ShouldBeNil)
-				So(node.FindChild(opt.Some(byte('c'))), ShouldNotBeNil)
-				So(node.FindChild(opt.Some(byte('d'))), ShouldNotBeNil)
-				So(node.FindChild(opt.Some(byte('e'))), ShouldBeNil)
-				So(node.FindChild(opt.Some(byte('f'))), ShouldNotBeNil)
-				So(node.FindChild(opt.Some(byte('g'))), ShouldNotBeNil)
-				So(node.FindChild(opt.Some(byte('h'))), ShouldNotBeNil)
+				So(node.FindChild(int('a')), ShouldNotBeNil)
+				So(node.FindChild(int('b')), ShouldBeNil)
+				So(node.FindChild(int('c')), ShouldNotBeNil)
+				So(node.FindChild(int('d')), ShouldNotBeNil)
+				So(node.FindChild(int('e')), ShouldBeNil)
+				So(node.FindChild(int('f')), ShouldNotBeNil)
+				So(node.FindChild(int('g')), ShouldNotBeNil)
+				So(node.FindChild(int('h')), ShouldNotBeNil)
 			})
 
 			Convey("And keys should be properly ordered", func() {
@@ -392,9 +391,9 @@ func TestNode16_Shrink(t *testing.T) {
 		child3 := NewLeaf[any](a, []byte("c"), nil)
 
 		Convey("When shrinking with 3 or more children", func() {
-			node.AddChild(opt.Some(byte('a')), child1)
-			node.AddChild(opt.Some(byte('b')), child2)
-			node.AddChild(opt.Some(byte('c')), child3)
+			node.AddChild(int('a'), child1)
+			node.AddChild(int('b'), child2)
+			node.AddChild(int('c'), child3)
 
 			So(node.NumChildren, ShouldEqual, 3)
 
@@ -410,8 +409,8 @@ func TestNode16_Shrink(t *testing.T) {
 		})
 
 		Convey("When shrinking with exactly 2 children", func() {
-			node.AddChild(opt.Some(byte('a')), child1)
-			node.AddChild(opt.Some(byte('b')), child2)
+			node.AddChild(int('a'), child1)
+			node.AddChild(int('b'), child2)
 
 			So(node.NumChildren, ShouldEqual, 2)
 
@@ -426,18 +425,18 @@ func TestNode16_Shrink(t *testing.T) {
 				node4 := result.(*Node4[any])
 				So(node4.NumChildren, ShouldEqual, 2)
 
-				found := node4.FindChild(opt.Some(byte('a')))
+				found := node4.FindChild(int('a'))
 				So(found, ShouldNotBeNil)
 				So(*found, ShouldEqual, child1.Ref())
 
-				found = node4.FindChild(opt.Some(byte('b')))
+				found = node4.FindChild(int('b'))
 				So(found, ShouldNotBeNil)
 				So(*found, ShouldEqual, child2.Ref())
 			})
 		})
 
 		Convey("When shrinking with exactly 1 child", func() {
-			node.AddChild(opt.Some(byte('a')), child1)
+			node.AddChild(int('a'), child1)
 
 			So(node.NumChildren, ShouldEqual, 1)
 
@@ -452,7 +451,7 @@ func TestNode16_Shrink(t *testing.T) {
 				node4 := result.(*Node4[any])
 				So(node4.NumChildren, ShouldEqual, 1)
 
-				found := node4.FindChild(opt.Some(byte('a')))
+				found := node4.FindChild(int('a'))
 				So(found, ShouldNotBeNil)
 				So(*found, ShouldEqual, child1.Ref())
 			})

@@ -24,7 +24,6 @@ package node
 import (
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/slice"
-	"github.com/flier/goutil/pkg/opt"
 )
 
 // Type represents the type identifier for different node implementations in the ART tree.
@@ -135,21 +134,21 @@ type Node[T any] interface {
 	//
 	// The key byte represents the next character in the key being searched.
 	// This method is the core of tree traversal and search operations.
-	FindChild(b opt.Option[byte]) *Ref[T]
+	FindChild(key int) *Ref[T]
 
 	// AddChild adds a new child node to this node, associating it with the given key byte.
 	// If the node becomes full, it may need to grow to a larger node type.
 	//
 	// The child parameter must implement AsRef[T] to provide a reference interface.
 	// If a child with the same key already exists, it will be replaced.
-	AddChild(b opt.Option[byte], child AsRef[T])
+	AddChild(key int, child AsRef[T])
 
 	// RemoveChild removes the child node associated with the given key byte.
 	//
 	// The child parameter is used to verify the removal operation and may trigger
 	// node shrinking if the remaining children are few enough.
 	// This method maintains the tree's structural integrity during deletions.
-	RemoveChild(b opt.Option[byte], child *Ref[T])
+	RemoveChild(key int, child *Ref[T])
 
 	// Grow converts this node to a larger node type when it reaches capacity.
 	//

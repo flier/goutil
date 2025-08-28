@@ -254,6 +254,8 @@ func (r Ref[T]) AsNode256() *Node256[T] {
 //
 // Panics:
 //   - If the reference contains an invalid node type identifier
+//
+//go:nosplit
 func (r Ref[T]) AsNode() Node[T] {
 	if r == 0 {
 		return nil

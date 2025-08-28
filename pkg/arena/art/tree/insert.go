@@ -5,7 +5,6 @@ import (
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/art/node"
 	"github.com/flier/goutil/pkg/arena/slice"
-	"github.com/flier/goutil/pkg/opt"
 )
 
 func RecursiveInsert[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T], depth int, replace bool) *T {
@@ -58,12 +57,20 @@ func InsertToLeaf[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T]
 	}
 
 	// Add the leafs to the new node4
-	newNode.AddChild(leaf.Key.CheckedLoad(depth), leaf)
-	newNode.AddChild(curr.Key.CheckedLoad(depth), ref)
+	newNode.AddChild(checkedLoad(leaf.Key, depth), leaf)
+	newNode.AddChild(checkedLoad(curr.Key, depth), ref)
 
 	ref.Replace(newNode)
 
 	return nil
+}
+
+func checkedLoad(key slice.Slice[byte], depth int) int {
+	if depth < key.Len() {
+		return int(key.Load(depth))
+	}
+
+	return -1
 }
 
 // InsertToNode inserts a leaf into a node.
@@ -90,11 +97,11 @@ func InsertToNode[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T]
 			newNode.Partial = partial.Slice(0, diff).Clone(a)
 
 			// Add the current node to the new node
-			newNode.AddChild(n.Prefix().CheckedLoad(diff), n)
+			newNode.AddChild(checkedLoad(n.Prefix(), diff), n)
 			n.SetPrefix(partial.Slice(diff+1, partial.Len()))
 
 			// Add the leaf to the new node
-			newNode.AddChild(leaf.Key.CheckedLoad(depth+diff), leaf)
+			newNode.AddChild(checkedLoad(leaf.Key, depth+diff), leaf)
 
 			ref.Replace(newNode)
 
@@ -102,7 +109,7 @@ func InsertToNode[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T]
 		}
 	}
 
-	key := leaf.Key.CheckedLoad(depth)
+	key := checkedLoad(leaf.Key, depth)
 
 	// If the child is found, we need to recurse
 	if child := n.FindChild(key); child != nil && !child.Empty() {
@@ -114,7 +121,7 @@ func InsertToNode[T any](a arena.Allocator, ref *node.Ref[T], leaf *node.Leaf[T]
 	return nil
 }
 
-func AddChild[T any](a arena.Allocator, ref *node.Ref[T], key opt.Option[byte], leaf *node.Leaf[T]) {
+func AddChild[T any](a arena.Allocator, ref *node.Ref[T], key int, leaf *node.Leaf[T]) {
 	debug.Assert(ref.IsNode(), "current node must be a node")
 
 	curr := ref.AsNode()

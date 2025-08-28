@@ -8,7 +8,6 @@ import (
 	"github.com/flier/goutil/pkg/arena"
 	"github.com/flier/goutil/pkg/arena/art/node"
 	. "github.com/flier/goutil/pkg/arena/art/tree"
-	"github.com/flier/goutil/pkg/opt"
 )
 
 func TestRecursiveDelete(t *testing.T) {
@@ -288,7 +287,7 @@ func TestRecursiveDelete(t *testing.T) {
 
 				Convey("And tree should be modified (one child removed)", func() {
 					So(node256.NumChildren, ShouldEqual, 49)
-					So(node256.FindChild(opt.Some(byte(25))), ShouldBeNil)
+					So(node256.FindChild(int(25)), ShouldBeNil)
 				})
 			})
 
